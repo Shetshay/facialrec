@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Feed</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Camera Feed Test</h1>
+    </header>
+    <div id="countdown"></div>
+    <div class="video-container">
+        <video id="video" width="640" height="480" autoplay></video>
+        <img id="analysisImage" width="640" height="480" style="display:none;" />
+    </div>
+    <button id="snapshotButton">Take Snapshot</button>
+    <button id="encryptButton">Encrypt Files</button>
+    <button id="decryptButton">Decrypt Files</button>
+    <button id="darkModeToggle">Toggle Dark Mode</button>
+    <div id="snapshotMessage"></div>
+    <div id="processMessage"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Attempt to display the correct image when the page loads
+            checkAndSetImage();
+        });
+
+        function checkAndSetImage() {
+            fetch('/check-image')  // This endpoint needs to be implemented on your server
+            .then(response => response.text())
+            .then(filename => {
+                const analysisImage = document.getElementById('analysisImage');
+                if (filename) {
+                    analysisImage.src = filename + '?' + new Date().getTime(); // Cache busting
+                    analysisImage.style.display = 'block';
+                } else {
+                    console.error('No image file specified by the server.');
+                }
+            })
+            .catch(err => console.error('Error fetching image file:', err));
+        }
+
+        const videoElement = document.getElementById('video');
+        const countdownElement = document.getElementById('countdown');
+        const snapshotMessage = document.getElementById('snapshotMessage');
+        const analysisImage = document.getElementById('analysisImage');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            darkModeToggle.textContent = document.body.classList.contains('dark-mode') ? 'Toggle Light Mode' : 'Toggle Dark Mode';
+        });
+
+        function startCountdown(duration) {
+            let timer = duration, minutes, seconds;
+            const countdownInterval = setInterval(function () {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+                countdownElement.textContent = minutes + ":" + seconds;
+                if (--timer < 0) {
+                    clearInterval(countdownInterval);
+                    takeSnapshot();
+                }
+            }, 1000);
+        }
+
+        function takeSnapshot() {
+            const canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            canvas.getContext('2d').drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(function(blob) {
+                const formData = new FormData();
+                formData.append('file', blob, 'logout.jpg');
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
+                }).then(response => {
+                    if (response.ok) {
+                        countdownElement.textContent = "";
+                        snapshotMessage.textContent = "Picture has been taken and processed";
+                        checkAndSetImage(); // Refresh the displayed image
+                    } else {
+                        snapshotMessage.textContent = "Error processing the picture";
+                    }
+                });
+            }, 'image/jpeg');
+        }
+
+        if (navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    videoElement.srcObject = stream;
+                    startCountdown(5); // Start the countdown when the stream is ready
+                })
+                .catch(err => console.error("Error: ", err));
+        } else {
+            alert("getUserMedia not supported in this browser.");
+        }
+
+        document.getElementById('snapshotButton').addEventListener('click', function() {
+            this.classList.add('clicked');
+            startCountdown(5);  // Restart or start countdown to take snapshot
+            setTimeout(() => {
+                this.classList.remove('clicked');
+            }, 700);
+        });
+
+        document.getElementById('encryptButton').addEventListener('click', function() {
+            fetch('/encrypt', { method: 'POST' })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('processMessage').textContent = data;
+            });
+        });
+
+        document.getElementById('decryptButton').addEventListener('click', function() {
+            fetch('/decrypt', { method: 'POST' })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('processMessage').textContent = data;
+            });
+        });
+    </script>
+</body>
+</html>
