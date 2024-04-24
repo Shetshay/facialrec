@@ -94,7 +94,10 @@
     "wrap-ansi-cjs": "^7.0.0",
     "yaml": "^2.4.1"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "prettier-plugin-tailwindcss": "^0.5.14"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npx tailwindcss -i ./src/input.css -o ./src/style.css --watch"
