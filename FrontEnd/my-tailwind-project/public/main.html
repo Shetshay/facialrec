@@ -3,20 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Main Page - FacialRec</title>
+    <title>Welcome - FacialRec</title>
     <link href="./build.css" rel="stylesheet">
 </head>
 <body class="font-sans bg-gray-900 text-white">
-
     <div class="flex justify-center items-center h-screen">
         <div class="w-full max-w-md p-6 shadow-xl bg-gray-800 rounded-md">
             <h1 class="text-3xl text-center font-semibold">Welcome to FacialRec!</h1>
-            <p class="text-xl text-center mt-5">You are now securely logged in.</p>
+            <p class="text-xl text-center mt-5">Please capture your face for verification.</p>
             <div class="flex justify-center mt-8">
-                <a href="index.html" class="text-lg bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">Log out</a>
+                <button onclick="redirectToCapture()" class="text-lg bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">Capture</button>
             </div>
         </div>
     </div>
-
+    <script>
+        function redirectToCapture() {
+            // Assuming '/pythonFacialRec/index.html' is the path on the server where the file is located.
+            window.location.href = 'facialrec.org';
+        }
+    </script>
 </body>
 </html>
