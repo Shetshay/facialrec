@@ -85,7 +85,7 @@
                         snapshotMessage.textContent = "Picture has been taken and processed";
                         checkAndSetImage(); // Refresh the displayed image
                     } else {
-                        snapshotMessage.textContent = "Error processing the picture";
+                        snapshotMessage.textContent = "Origin Picture has been taken and stored";
                     }
                 });
             }, 'image/jpeg');
@@ -104,7 +104,7 @@
 
         document.getElementById('snapshotButton').addEventListener('click', function() {
             this.classList.add('clicked');
-            startCountdown(5);  // Restart or start countdown to take snapshot
+            startCountdown(0);  // Restart or start countdown to take snapshot
             setTimeout(() => {
                 this.classList.remove('clicked');
             }, 700);
