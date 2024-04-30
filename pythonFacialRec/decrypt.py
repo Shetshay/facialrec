@@ -12,7 +12,7 @@ def extract_floats(s):
     floats = [float(num) for pair in matches for num in pair]
     return floats
 
-directory_path = '/home/carlos/public_html/'
+directory_path = '/home/carlos/facialrec/pythonFacialRec'
 
 # Determine which data file to use
 data_file = 'logout.txt' if os.path.exists('logout.txt') else 'origin.txt'
