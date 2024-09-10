@@ -5,9 +5,14 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 def extract_floats(s):
-    return list(map(float, re.findall(r"[-+]?\d*\.\d+|\d+", s)))
+    # This pattern will find all pairs of floats in the form (x.xx, y.yy)
+    pattern = r'\(\s*([-+]?\d*\.\d+|\d+)\s*,\s*([-+]?\d*\.\d+|\d+)\s*\)'
+    matches = re.findall(pattern, s)
+    # Flatten the list of tuples and convert each to float
+    floats = [float(num) for pair in matches for num in pair]
+    return floats
 
-directory_path = '/home/environment/project/'
+directory_path = '/home/carlos/facialrec/pythonFacialRec'
 
 # Determine which data file to use
 data_file = 'logout.txt' if os.path.exists('logout.txt') else 'origin.txt'

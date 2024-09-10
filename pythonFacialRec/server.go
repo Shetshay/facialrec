@@ -39,12 +39,7 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        // Change permissions of the new file to 777
-        err = os.Chmod(targetFileName, 0777)
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
+
 
         // Call the face_scan.py script
         cmd := exec.Command("python3", "face_scan.py")
