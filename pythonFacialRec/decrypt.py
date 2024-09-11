@@ -12,7 +12,7 @@ def extract_floats(s):
     floats = [float(num) for pair in matches for num in pair]
     return floats
 
-directory_path = '/home/carlos/facialrec/pythonFacialRec'
+directory_path = os.path.dirname(os.path.abspath(__file__))
 
 # Determine which data file to use
 data_file = 'logout.txt' if os.path.exists('logout.txt') else 'origin.txt'
@@ -41,7 +41,7 @@ for filename in os.listdir(directory_path):
         original_filename = filename[:-4]
         decrypted_filename = "decrypted_" + original_filename
         decrypted_file_path = os.path.join(directory_path, decrypted_filename)
-        
+
         with open(decrypted_file_path, 'wb') as f:
             f.write(decrypted_data)
 
