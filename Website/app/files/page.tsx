@@ -1,8 +1,9 @@
 // app/files/page.tsx
 "use client";
-import Sidebar from "../components/Sidebar";
-import BackToHomeButton from "../components/BackToHomeButton"; // Adjust path accordingly
+
+import Layout from "../components/Layout"; // Use the Layout component
 import { useState } from "react";
+import BackToHomeButton from "../components/BackToHomeButton"; // Optional button to navigate back
 
 const mockFiles = [
     { name: "Document 1.pdf", size: "1.2 MB", uploaded: "2024-09-01" },
@@ -13,16 +14,8 @@ const mockFiles = [
 export default function FilesPage() {
     const [files] = useState(mockFiles);
 
-    const navItems = [
-        { label: "Home", href: "/" },
-        { label: "User", href: "/user" },
-        { label: "Files", href: "/files" },
-        // Add more items here if needed
-    ];
-
     return (
-        <div className="flex flex-col items-center p-6 min-h-screen bg-gray-50">
-            <Sidebar navItems={navItems} />
+        <Layout>
             <h1 className="text-2xl font-bold text-gray-800 mb-6">Files</h1>
             <div className="w-full max-w-2xl bg-white rounded-lg shadow-md p-6">
                 <ul className="space-y-4">
@@ -44,6 +37,6 @@ export default function FilesPage() {
                     ))}
                 </ul>
             </div>
-        </div>
+        </Layout>
     );
 }
