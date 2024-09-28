@@ -1,46 +1,47 @@
-//import AcmeLogo from "@/app/ui/acme-logo";
-//import { ArrowRightIcon } from "@heroicons/react/24/outline";
-import Link from "next/link";
-import { lusitana } from "@/app/ui/fonts";
+// app/page.tsx
+import Sidebar from "../app/components/Sidebar"; // Import the Sidebar component
+import { lusitana, inter } from "../app/ui/fonts"; // Adjust path based on your structure
 import Image from "next/image";
 
 export default function Page() {
+  const navItems = [
+    { label: "Home", href: "/" },
+    { label: "User", href: "/user" },
+    { label: "Files", href: "/files" },
+    // Add more items here if needed
+  ];
+
   return (
-    <main className="flex min-h-screen flex-col p-6">
-      <div className="flex h-20 shrink-0 items-end rounded-lg bg-blue-500 p-4 md:h-52">
-        {/* <AcmeLogo /> */}
-      </div>
-      <div className="mt-4 flex grow flex-col gap-4 md:flex-row">
-        <div className="flex flex-col justify-center gap-6 rounded-lg bg-gray-50 px-6 py-10 md:w-2/5 md:px-20">
-          <div className="relative w-0 h-0 border-l-[15px] border-r-[15px] border-b-[26px] border-l-transparent border-r-transparent border-b-black" />
-          <p
-            className={`${lusitana.className} text-xl text-gray-800 md:text-3xl md:leading-normal`}
-          >
-            <strong>Welcome to FacialRec.</strong> This is the example for the{" "}
-            <a href="https://nextjs.org/learn/" className="text-blue-500">
-              Next.js Learn Course
-            </a>
-            , brought to you by Vercel.
-          </p>
+    <div className="flex min-h-screen">
+      {/* Sidebar */}
+      <Sidebar navItems={navItems} /> {/* Pass the navItems to the Sidebar */}
+
+      {/* Main Content */}
+      <main className="flex-1 p-6 ml-64"> {/* Add margin-left for main content to adjust for sidebar width */}
+        <div className="flex flex-col">
+          <div className="flex items-center justify-center h-20 bg-blue-500 rounded-lg p-4">
+            <h2 className="text-white">AcmeLogo Placeholder</h2>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex justify-center items-center p-6 bg-gray-50 rounded-lg shadow-md">
+              <p className={`text-xl text-gray-800 ${lusitana.className}`}>
+                <strong>Welcome to FacialRec.</strong>
+              </p>
+            </div>
+
+            <div className="flex justify-center p-6">
+              <Image
+                src="/hero-mobile.png"
+                width={560}
+                height={620}
+                className="block md:hidden"
+                alt="Screenshot of the dashboard project showing mobile version"
+              />
+            </div>
+          </div>
         </div>
-        <div className="flex items-center justify-center p-6 md:w-3/5 md:px-28 md:py-12">
-          {/* Add Hero Images Here */}
-          <Image
-            src="/hero-desktop.png"
-            width={1000}
-            height={760}
-            className="hidden md:block"
-            alt="Screenshots of the dashboard project showing desktop version"
-          />
-          <Image
-            src="/hero-mobile.png"
-            width={560}
-            height={620}
-            className="block md:hidden"
-            alt="Screenshot of the dashboard project showing mobile version"
-          />
-        </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
