@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline"; // Icons for open and close actions
+import { Bars3Icon, XMarkIcon, SunIcon, MoonIcon } from "@heroicons/react/24/outline"; // Icons for open, close, day, and night actions
 
 type NavItem = {
     label: string;
@@ -16,9 +16,14 @@ interface SidebarProps {
 
 export default function Sidebar({ navItems }: SidebarProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isNightMode, setIsNightMode] = useState(true); // State to toggle between day and night modes
 
     const toggleSidebar = () => {
         setIsOpen(!isOpen);
+    };
+
+    const toggleTheme = () => {
+        setIsNightMode(!isNightMode);
     };
 
     return (
@@ -35,13 +40,14 @@ export default function Sidebar({ navItems }: SidebarProps) {
 
             {/* Sidebar */}
             <div
-                className={`fixed top-0 left-0 h-full w-64 bg-gray-800 text-white transform ${isOpen ? "translate-x-0" : "-translate-x-full"
-                    } transition-transform duration-300 ease-in-out z-10 flex flex-col justify-between`}
+                className={`fixed top-0 left-0 h-full w-64 ${isNightMode ? 'bg-gray-800 text-white' : 'bg-gray-200 text-black'} 
+          transform ${isOpen ? "translate-x-0" : "-translate-x-full"} 
+          transition-transform duration-300 ease-in-out z-10 flex flex-col justify-between`}
             >
                 {/* Close Button inside the sidebar at the top-right */}
                 <button
                     onClick={toggleSidebar}
-                    className="p-2 absolute top-4 right-4 z-20 bg-gray-800 text-white rounded-md hover:bg-gray-700"
+                    className={`p-2 absolute top-4 right-4 z-20 ${isNightMode ? 'bg-gray-800 text-white' : 'bg-gray-200 text-black'} rounded-md hover:bg-gray-700`}
                 >
                     <XMarkIcon className="h-6 w-6" />
                 </button>
@@ -52,7 +58,10 @@ export default function Sidebar({ navItems }: SidebarProps) {
                     <ul>
                         {navItems.map((item, index) => (
                             <li key={index} className="list-none">
-                                <Link href={item.href} className="block p-2 rounded hover:bg-gray-700">
+                                <Link
+                                    href={item.href}
+                                    className={`block p-2 rounded ${isNightMode ? 'hover:bg-gray-700' : 'hover:bg-gray-300'}`}
+                                >
                                     {item.label}
                                 </Link>
                             </li>
@@ -60,9 +69,16 @@ export default function Sidebar({ navItems }: SidebarProps) {
                     </ul>
                 </nav>
 
-                {/* Navigation Footer */}
-                <div className="bg-gray-900 py-4">
-                    <h1 className="text-center text-lg font-bold">Navigation</h1>
+                {/* Navigation Footer with Theme Toggle Button */}
+                <div className="relative bg-gray-900 py-4 flex items-center justify-between">
+                    <h1 className="text-center text-lg font-bold text-white flex-grow">Navigation</h1>
+                    <button
+                        onClick={toggleTheme}
+                        className={`absolute bottom-4 right-4 p-2 rounded-full ${isNightMode ? 'bg-gray-800 text-white' : 'bg-gray-200 text-black'} hover:bg-opacity-80`}
+                        title={isNightMode ? 'Switch to Day Mode' : 'Switch to Night Mode'}
+                    >
+                        {isNightMode ? <SunIcon className="h-6 w-6" /> : <MoonIcon className="h-6 w-6" />}
+                    </button>
                 </div>
             </div>
 
