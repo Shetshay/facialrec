@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
     "time"
+    "reflect"
 
 //    "github.com/gorilla/sessions"
     "github.com/gin-contrib/cors"
@@ -138,10 +139,24 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
     }
 
     session.Values["user_email"] = user.Email
+    session.Values["user_accesstoken"] = user.AccessToken
+    session.Values["user_idtoken"] = user.IDToken
+    session.Values["user_id"] = user.UserID
     //checking to see if it is being checked
     userEmail := session.Values["user_email"]
     if userEmail != nil {
-//        fmt.Println("user_email is:", userEmail)
+    //printing over user struct for clarity
+
+    val := reflect.ValueOf(user)
+
+    // Iterate over the struct fields and print them
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Type().Field(i)               // Get the field type
+		value := val.Field(i)                      // Get the field value
+		fmt.Printf("%s: %v\n", field.Name, value) // Print field name and value
+	}
+
+
     } else {
         fmt.Println("IT NOT WORKED")
     }
