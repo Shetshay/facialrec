@@ -68,7 +68,7 @@ export default function FilesPage() {
             )}
 
             {/* Download Button */}
-            <div className="p-4 bg-gray-100">
+            <div className=" bg-gray-100">
               <button className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                 Download
               </button>
