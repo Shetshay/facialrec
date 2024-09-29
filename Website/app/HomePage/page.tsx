@@ -28,6 +28,12 @@ export default function HomePage() {
           >
             Sign Up
           </Link>
+          <Link
+            href="/HomePage/signIn"
+            className="px-4 py-2 bg-blue-500 rounded-lg text-white hover:bg-blue-600"
+          >
+            Sign In
+          </Link>
         </div>
       </div>
     </HomeLayout>

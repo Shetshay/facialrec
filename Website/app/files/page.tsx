@@ -11,11 +11,23 @@ const mockFiles = [
 ];
 
 export default function FilesPage() {
-  const [files] = useState(mockFiles);
+  const [files, setFiles] = useState(mockFiles);
   const [editMode, setEditMode] = useState(false);
 
   const toggleEditMode = () => {
     setEditMode((prev) => !prev);
+  };
+
+  const handleDeleteFile = (fileName: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${fileName}"?`
+    );
+    if (confirmed) {
+      // Filter out the file from the files list
+      setFiles((prevFiles) =>
+        prevFiles.filter((file) => file.name !== fileName)
+      );
+    }
   };
 
   return (
@@ -61,14 +73,17 @@ export default function FilesPage() {
             {/* X Icon in Edit Mode */}
             {editMode && (
               <div className="absolute top-2 left-2">
-                <button className="bg-white border-2 border-gray-800 rounded-full p-1">
+                <button
+                  onClick={() => handleDeleteFile(file.name)}
+                  className="bg-white border-2 border-gray-800 rounded-full p-1"
+                >
                   <FaTimes className="text-gray-800" />
                 </button>
               </div>
             )}
 
             {/* Download Button */}
-            <div className=" bg-gray-100">
+            <div className="bg-gray-100">
               <button className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                 Download
               </button>
