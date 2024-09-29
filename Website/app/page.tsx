@@ -13,7 +13,7 @@ export default function Page() {
 
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex justify-center items-center p-6 bg-gray-50 rounded-lg shadow-md">
-            <p className="text-xl text-gray-800">
+            <p className="text-xl text-gray-create">
               <strong>Welcome to FacialRec.</strong>
             </p>
           </div>
