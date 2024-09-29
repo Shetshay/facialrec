@@ -91,6 +91,10 @@ func (s *Server) logoutHandler(c *gin.Context) {
     // Set the Max-Age of the cookie to -1 to delete it
     session.Options.MaxAge = -1
 
+    // Set SameSite and Secure attributes
+    session.Options.SameSite = http.SameSiteNoneMode
+    session.Options.Secure = true // Set to true if your site is served over HTTPS
+
     if err := session.Save(c.Request, c.Writer); err != nil {
         // Handle error, perhaps return an HTTP error response
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
@@ -103,7 +107,7 @@ func (s *Server) logoutHandler(c *gin.Context) {
     homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
 
     if homepageURL == "" {
-         homepageURL= "http://facialrec.org/api/static"
+        homepageURL= "http://localhost:8000"
     }
 
     c.Redirect(http.StatusFound, homepageURL)
@@ -141,6 +145,12 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
     } else {
         fmt.Println("IT NOT WORKED")
     }
+
+    // Set SameSite and Secure attributes
+    session.Options.SameSite = http.SameSiteNoneMode
+    session.Options.Secure = true // Set to true if your site is served over HTTPS
+
+
     if err := session.Save(c.Request, c.Writer); err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session", "details": err.Error()})
         return
@@ -149,7 +159,7 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
     homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
 
     if homepageURL == "" {
-         homepageURL= "http://facialrec.org/api/static"
+        homepageURL= "http://localhost:8000"
     }
 
     c.Redirect(http.StatusFound, homepageURL)
