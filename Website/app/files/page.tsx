@@ -51,10 +51,10 @@ export default function FilesPage() {
         {files.map((file, index) => (
           <div
             key={index}
-            className="relative bg-white shadow-lg rounded-lg overflow-hidden"
+            className="relative bg-white shadow-lg rounded-lg flex flex-col h-full"
           >
             {/* Image Placeholder */}
-            <div className="h-3/4 bg-gray-200 flex justify-center items-center">
+            <div className="h-48 bg-gray-200 flex justify-center items-center">
               <img
                 src="/placeholder.png"
                 alt="File Preview"
@@ -63,7 +63,7 @@ export default function FilesPage() {
             </div>
 
             {/* File Information */}
-            <div className="p-4">
+            <div className="p-4 flex-grow">
               <h3 className="text-lg font-bold text-gray-800">{file.name}</h3>
               <p className="text-sm text-gray-600">
                 Last Opened: {file.lastOpened}
@@ -83,7 +83,7 @@ export default function FilesPage() {
             )}
 
             {/* Download Button */}
-            <div className="bg-gray-100">
+            <div className="bg-gray-100 p-4">
               <button className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                 Download
               </button>
