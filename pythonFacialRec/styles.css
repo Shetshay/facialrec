@@ -26,8 +26,9 @@ header {
     margin: 20px 0;
 }
 
-#video, #analysisImage {
-    box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.5);
+#video,
+#analysisImage {
+    box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.5);
     margin: 10px;
 }
 
@@ -74,7 +75,8 @@ button#snapshotButton:active {
         flex-direction: column;
     }
 
-    #video, #analysisImage {
+    #video,
+    #analysisImage {
         width: 90%;
         height: auto;
     }
@@ -98,6 +100,7 @@ body.dark-mode button:active {
     background-color: #555;
 }
 
-body.dark-mode #video, body.dark-mode #analysisImage {
-    box-shadow: 0px 0px 10px 0px rgba(255,255,255,0.5);
+body.dark-mode #video,
+body.dark-mode #analysisImage {
+    box-shadow: 0px 0px 10px 0px rgba(255, 255, 255, 0.5);
 }
