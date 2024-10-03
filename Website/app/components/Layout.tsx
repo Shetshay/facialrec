@@ -26,21 +26,21 @@ export default function Layout({ children }: LayoutProps) {
   const [isNightMode, setIsNightMode] = useState(true); // Manage day/night mode state
 
   const navItems = [
-    { label: "Home", href: "/" },
+    { label: "DashBoard", href: "/" },
     { label: "User", href: "/user" },
     { label: "Files", href: "/files" },
-    { label: "HomePage", href: "/HomePage" },
+    { label: "Landing Page", href: "/HomePage" },
   ];
 
   // Function to toggle between day and night modes
   const toggleTheme = () => {
-    setIsNightMode(!isNightMode); // This should still toggle night and day themes
+    setIsNightMode(!isNightMode);
   };
 
   // Determine current theme
   const theme = isNightMode ? nightTheme : dayTheme;
 
-  // Use the utility function to determine the appropriate text color based on background brightness
+  // Determine text color based on background brightness
   const layoutTextColor = getTextColorForBackground(theme.layoutBg);
   const contentTextColor = getTextColorForBackground(theme.contentBg);
 
@@ -49,8 +49,15 @@ export default function Layout({ children }: LayoutProps) {
       <Head>
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <div className={`flex min-h-screen ${layoutTextColor} select-none`} style={{ backgroundColor: theme.layoutBg }}>
-        {/* Sidebar */}
+
+      {/* Container for background layer */}
+      <div className={`relative min-h-screen ${layoutTextColor}`} style={{ backgroundColor: theme.layoutBg }}>
+        {/* Background layer beneath sidebar */}
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-blue-500 to-purple-500 opacity-50">
+          {/* This is the background layer behind the sidebar */}
+        </div>
+
+        {/* Sidebar - Fixed position so it floats on top */}
         <Sidebar
           navItems={navItems}
           isNightMode={isNightMode}
@@ -58,8 +65,8 @@ export default function Layout({ children }: LayoutProps) {
           theme={theme} // Pass the current theme to the sidebar
         />
 
-        {/* Main Content */}
-        <main className={`flex-1 p-6 ml-64 rounded-lg shadow-lg overflow-y-auto ${contentTextColor}`} style={{ backgroundColor: theme.contentBg }}>
+        {/* Main content area */}
+        <main className={`relative flex-1 p-6 ml-64 rounded-lg shadow-lg z-10 ${contentTextColor}`} style={{ backgroundColor: theme.contentBg }}>
           {children} {/* Render the children components inside the main content area */}
         </main>
       </div>
