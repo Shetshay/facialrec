@@ -33,7 +33,7 @@ export default function FilesPage() {
   return (
     <Layout>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Files</h1>
+        <h1 className="text-2xl font-bold text-white-800">Files</h1>
         <div className="space-x-4">
           <button
             onClick={toggleEditMode}

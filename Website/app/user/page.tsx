@@ -14,7 +14,7 @@ export default function UserPage() {
 
   return (
     <Layout>
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">User Profile</h1>
+      <h1 className="text-2xl font-bold text-white-800 mb-6">User Profile</h1>
       <div className="w-full max-w-sm bg-white rounded-lg shadow-md p-6 mb-8">
         <div className="flex items-center space-x-4">
           <Image
