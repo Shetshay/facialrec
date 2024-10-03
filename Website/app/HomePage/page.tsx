@@ -1,29 +1,29 @@
 "use client"; // Marks this as a client component
-import BackToHomeButton from "../components/BackToHomeButton";
 import HomeLayout from "../components/HomeLayout"; // Import the new HomeLayout component
 import Link from "next/link"; // For navigation between subpages
+import "../HomePage/HomePage.css"; // Import custom CSS
 
 export default function HomePage() {
   return (
     <HomeLayout>
       {/* Unique content of the HomePage */}
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Facial Rec</h1>
-        <p className="text-lg mb-6">
-          A cloud-based storage system using facial recognition.
+      <div className="home-page-container flex flex-col items-center justify-center min-h-screen text-center">
+        <h1 className="text-5xl font-bold mb-6">Welcome to Facial Rec</h1>
+        <p className="text-lg mb-8 max-w-md leading-relaxed">
+          A secure, cloud-based storage system with advanced facial recognition technology.
         </p>
 
         {/* Navigation Links to Subpages */}
-        <div className="flex gap-4">
+        <div className="button-group">
           <Link
             href="/user"
-            className="px-4 py-2 bg-blue-500 rounded-lg text-white hover:bg-blue-600"
+            className="custom-button px-6 py-3 bg-blue-500 rounded-lg text-white font-semibold hover:bg-blue-600 shadow-lg"
           >
             Sign Up
           </Link>
           <Link
             href="/user"
-            className="px-4 py-2 bg-blue-500 rounded-lg text-white hover:bg-blue-600"
+            className="custom-button px-6 py-3 bg-transparent border-2 border-white text-white rounded-lg font-semibold hover:bg-white hover:text-black transition-all duration-300"
           >
             Sign In
           </Link>
