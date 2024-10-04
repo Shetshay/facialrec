@@ -1,36 +1,36 @@
---dropping all tables when running mainTables.sql
---if dont want to drop and remove tables
--- DONT RUN THIS
+-- Dropping all tables when running mainTables.sql
+-- If don't want to drop and remove tables, DONT RUN THIS
 
 drop table if exists userInfo cascade;
 
--- create User table
-create table userInfo(
-    userID SERIAL NOT NULL PRIMARY KEY,
-    userName VARCHAR(255) NOT NULL,
-    userEmail VARCHAR(255) NOT NULL UNIQUE,
-    userPassword VARCHAR(255) NOT NULL,
-    signupData TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    lastLogin TIMESTAMP NOT NULL
+-- Create User table (OAuth2 adaptation)
+create table userInfo (
+    userID SERIAL NOT NULL PRIMARY KEY, -- internal userID for your system
+    googleUserID VARCHAR(255) NOT NULL UNIQUE, -- Google OAuth2 user ID
+    firstName VARCHAR(255) NOT NULL,
+    lastName VARCHAR(255) NOT NULL,
+    userEmail VARCHAR(255) NOT NULL UNIQUE, -- Email from Google
+    signupDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Sign-up date
+    lastLogin TIMESTAMP NOT NULL, -- Last login time (OAuth authentication time)
+    googleAuthToken VARCHAR(512) -- Store the Google OAuth2 token if needed
 );
 
 drop table if exists Folder cascade;
 
--- create Folder table
+-- Create Folder table
 CREATE TABLE Folder (
     folderID SERIAL NOT NULL PRIMARY KEY,
     folderName VARCHAR(255) NOT NULL,
     creationDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    userID INT NOT NULL,
+    userID INT NOT NULL, -- reference to internal userID
     parentFolderID INT,
     FOREIGN KEY (userID) REFERENCES userInfo(userID) ON DELETE CASCADE,
     FOREIGN KEY (parentFolderID) REFERENCES Folder(folderID) ON DELETE SET NULL
 );
 
-
 drop table if exists Files cascade;
 
--- create Files table
+-- Create Files table
 CREATE TABLE Files (
     fileName VARCHAR(255) NOT NULL,
     fileType VARCHAR(50) NOT NULL,
@@ -44,17 +44,17 @@ CREATE TABLE Files (
     FOREIGN KEY (userID) REFERENCES userInfo(userID) ON DELETE CASCADE
 );
 
-
 drop table if exists faceAuthentication cascade;
 
--- create faceAuthentication table
+-- Create faceAuthentication table
 CREATE TABLE faceAuthentication (
     faceID SERIAL NOT NULL PRIMARY KEY,
     featureVector DOUBLE PRECISION[] NOT NULL,
     vectorFormat VARCHAR(50) NOT NULL,
-    regData TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    regDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     lastUsed TIMESTAMP NOT NULL,
     authToken VARCHAR(255),
     userID INT NOT NULL,
     FOREIGN KEY (userID) REFERENCES userInfo(userID) ON DELETE CASCADE
 );
+

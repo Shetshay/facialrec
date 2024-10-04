@@ -13,7 +13,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null); // State with the User interface or null
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/userCookieInfo', { credentials: 'include' })
+    fetch('http://localhost:3000/api/userCookieInfo', { credentials: 'include' })
       .then(response => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -30,12 +30,12 @@ function App() {
   }, []); // Empty dependency array means this effect runs once after the first render
 
   const handleLogin = () => {
-    const authUrl = import.meta.env.VITE_AUTH_URL || "https://facialrec.org/api/auth/google";
+    const authUrl = import.meta.env.VITE_AUTH_URL || "localhost:3000/api/auth/google";
     window.location.href = authUrl;
   };
 
   const handleLogout = () => {
-    const logoutURL = import.meta.env.VITE_LOGOUT_URL|| "https://facialrec.org/api/logout/google";
+    const logoutURL = import.meta.env.VITE_LOGOUT_URL|| "localhost:3000/api/logout/google";
     window.location.href = logoutURL;
   };
 

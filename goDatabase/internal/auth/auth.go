@@ -58,7 +58,7 @@ func NewAuth() {
     }
 
     goth.UseProviders(
-        google.New(googleClientId, googleClientSecret, callbackURL),
+        google.New(googleClientId, googleClientSecret, callbackURL, "profile", "email"),
     )
 
 

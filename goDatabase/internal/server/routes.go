@@ -4,10 +4,11 @@ import (
 	"context"
 //	"encoding/json"
 	"fmt"
-	"log"
+//	"log"
 	"net/http"
 	"os"
     "time"
+//    "reflect"
 
 //    "github.com/gorilla/sessions"
     "github.com/gin-contrib/cors"
@@ -40,7 +41,7 @@ func (s *Server) RegisterRoutes() *gin.Engine {
 
 	r.POST("/api/health", s.healthHandler)
 
-    r.POST("/api/userinfo", s.queryDataHandler)
+//    r.POST("/api/userinfo", s.queryDataHandler)
 
     r.GET("/api/userCookieInfo", s.userCookieInfo)
 
@@ -64,6 +65,7 @@ func (s *Server) healthHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, s.db.Health())
 }
 
+/*
 func (s *Server) queryDataHandler(c *gin.Context) {
 	query := "SELECT userid, useremail, username, signupdata, lastlogin FROM userinfo"
 	data, err := s.db.QueryData(query)
@@ -73,6 +75,7 @@ func (s *Server) queryDataHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, data)
 }
+*/
 
 func (s *Server) logoutHandler(c *gin.Context) {
     provider := c.Param("provider")
@@ -91,6 +94,10 @@ func (s *Server) logoutHandler(c *gin.Context) {
     // Set the Max-Age of the cookie to -1 to delete it
     session.Options.MaxAge = -1
 
+    // Set SameSite and Secure attributes
+    session.Options.SameSite = http.SameSiteNoneMode
+    session.Options.Secure = true // Set to true if your site is served over HTTPS
+
     if err := session.Save(c.Request, c.Writer); err != nil {
         // Handle error, perhaps return an HTTP error response
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
@@ -103,7 +110,7 @@ func (s *Server) logoutHandler(c *gin.Context) {
     homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
 
     if homepageURL == "" {
-         homepageURL= "http://facialrec.org/api/static"
+        homepageURL= "http://localhost:8000"
     }
 
     c.Redirect(http.StatusFound, homepageURL)
@@ -112,14 +119,7 @@ func (s *Server) logoutHandler(c *gin.Context) {
 
 func (s *Server) getAuthCallbackFunction(c *gin.Context) {
     provider := c.Param("provider")
-
     ctx := context.WithValue(c.Request.Context(), "provider", provider)
-
-    if auth.Store == nil {
-        log.Println("Session store is not initialized")
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-        return
-    }
 
     session, err := auth.Store.Get(c.Request, auth.SessionName)
     if err != nil {
@@ -129,31 +129,65 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 
     user, err := gothic.CompleteUserAuth(c.Writer, c.Request.WithContext(ctx))
     if err != nil {
-        c.String(http.StatusInternalServerError, fmt.Sprintf("Error: during user authentication %v", err));
+        c.String(http.StatusInternalServerError, fmt.Sprintf("Error: during user authentication %v", err))
         return
     }
 
+//    fmt.Printf("Raw user data: %+v\n", user)
+
+    userEmail := user.Email
+//    userName := user.Name
+
+    // Add email and access token to the session
     session.Values["user_email"] = user.Email
-    //checking to see if it is being checked
-    userEmail := session.Values["user_email"]
-    if userEmail != nil {
-//        fmt.Println("user_email is:", userEmail)
-    } else {
-        fmt.Println("IT NOT WORKED")
-    }
+    session.Values["user_accesstoken"] = user.AccessToken
+    session.Values["user_idtoken"] = user.IDToken
+    session.Values["user_id"] = user.UserID
+    session.Values["user_fName"] = user.FirstName
+    session.Values["user_lName"] = user.LastName
+
+
+    // Save session after setting values
     if err := session.Save(c.Request, c.Writer); err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session", "details": err.Error()})
         return
     }
 
-    homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
+    // Check if the user is already in the database
+    exists, err := s.db.IsUserInDatabase(userEmail)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking user in database", "details": err.Error()})
+        return
+    }
 
+    if exists {
+        // User exists, update the last login time
+        err = s.db.UpdateLastLogin(userEmail)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating last login", "details": err.Error()})
+            return
+        }
+        fmt.Println("User already exists. Last login time updated.")
+    } else {
+        // User doesn't exist, insert them into the database
+        err = s.db.AddUser(user.FirstName, user.LastName, userEmail, user.AccessToken, user.UserID)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to database", "details": err.Error()})
+            return
+        }
+        fmt.Println("User added to the database.")
+    }
+
+    // Get the reflection type and value of the struct
+
+    homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
     if homepageURL == "" {
-         homepageURL= "http://facialrec.org/api/static"
+        homepageURL = "http://localhost:8000"
     }
 
     c.Redirect(http.StatusFound, homepageURL)
 }
+
 
 
 func (s *Server) authHandler(c *gin.Context) {
