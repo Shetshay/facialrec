@@ -12,21 +12,22 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
+type UserInfo struct {
+	userID    int
+	userName  string
+	userEmail string
+	lastLogin time.Time
+}
+
 type Service interface {
 	Health() map[string]string
-    QueryData(query string, args ...interface{}) ([]UserInfo, error)
+	IsUserInDatabase(email string) (bool, error)
+	AddUser(fName, lName, email, authToken, oauthID string) error
+	UpdateLastLogin(email string) error // New method for updating lastLogin
 }
 
 type service struct {
 	db *sql.DB
-}
-
-type UserInfo struct {
-    UserID       string    `json:"userid"`
-    Username     string    `json:"username"`
-    UserEmail    string    `json:"useremail"`
-    SignupData   string    `json:"signupdata"`
-    LastLogin    string    `json:"lastlogin"`
 }
 
 var (
@@ -39,7 +40,7 @@ var (
 
 func New() Service {
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-                            username, password, host, port, database)
+		username, password, host, port, database)
 	db, err := sql.Open("pgx", connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -62,38 +63,34 @@ func (s *service) Health() map[string]string {
 	}
 }
 
-func (s *service) QueryData(query string, args ...interface{}) ([]UserInfo, error) {
-    // Create a slice to hold the results
-    var results []UserInfo
-
-    // Use context for query execution
-    ctx, cancel := context.WithCancel(context.Background())
-    defer cancel()
-
-    // Prepare the query
-    rows, err := s.db.QueryContext(ctx, query, args...)
-    if err != nil {
-        log.Println("Error executing query:", err)
-        return nil, err
-    }
-    defer rows.Close()
-
-    // Iterate through the result set
-    for rows.Next() {
-        var data UserInfo
-        // Scan the row into the YourDataType struct
-        if err := rows.Scan(&data.UserID, &data.Username, &data.UserEmail, &data.SignupData, &data.LastLogin); err != nil { // Adjust the Scan to match YourDataType fields
-            log.Println("Error scanning row:", err)
-            return nil, err
-        }
-        results = append(results, data)
-    }
-
-    // Check for errors from iterating over rows
-    if err = rows.Err(); err != nil {
-        log.Println("Error during row iteration:", err)
-        return nil, err
-    }
-
-    return results, nil
+// Check if user exists in database
+func (s *service) IsUserInDatabase(email string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS (SELECT 1 FROM userInfo WHERE userEmail = $1)`
+	err := s.db.QueryRow(query, email).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if user exists: %v", err)
+	}
+	return exists, nil
 }
+
+// Add a new user to the database
+func (s *service) AddUser(fName, lName, email, authToken, oauthID string,) error {
+	query := `INSERT INTO userInfo (firstName, lastName, userEmail, lastLogin, googleauthtoken, googleuserid) VALUES ($1, $2, $3, $4, $5, $6)`
+	_, err := s.db.Exec(query, fName, lName, email, time.Now(), authToken, oauthID)
+	if err != nil {
+		return fmt.Errorf("failed to add user: %v", err)
+	}
+	return nil
+}
+
+// Update last login time for a user
+func (s *service) UpdateLastLogin(email string) error {
+	query := `UPDATE userInfo SET lastLogin = $1 WHERE userEmail = $2`
+	_, err := s.db.Exec(query, time.Now(), email)
+	if err != nil {
+		return fmt.Errorf("failed to update last login time: %v", err)
+	}
+	return nil
+}
+
