@@ -29,7 +29,6 @@ export default function Layout({ children }: LayoutProps) {
     { label: "DashBoard", href: "/" },
     { label: "User", href: "/user" },
     { label: "Files", href: "/files" },
-    { label: "Landing Page", href: "/HomePage" },
   ];
 
   // Function to toggle between day and night modes
