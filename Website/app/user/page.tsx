@@ -2,7 +2,6 @@
 
 import Layout from "../components/Layout"; // Use the Layout component
 import Image from "next/image";
-import { useState } from "react";
 
 export default function UserPage() {
   // Placeholder for storage usage; this would come from your database

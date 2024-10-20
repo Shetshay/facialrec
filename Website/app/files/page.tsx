@@ -3,6 +3,7 @@
 import Layout from "../components/Layout"; // Use the Layout component
 import { useState } from "react";
 import { FaTimes } from "react-icons/fa"; // Importing the icon for the X button
+import Image from 'next/image'; // Importing the Next.js Image component
 
 const mockFiles = [
   { name: "Document 1.pdf", size: "1.2 MB", lastOpened: "2024-09-22" },
@@ -55,10 +56,12 @@ export default function FilesPage() {
           >
             {/* Image Placeholder */}
             <div className="h-48 bg-gray-200 flex justify-center items-center">
-              <img
+              <Image
                 src="/placeholder.png"
                 alt="File Preview"
                 className="object-cover w-full h-full"
+                width={500}
+                height={500}
               />
             </div>
 
