@@ -1,34 +1,36 @@
-// app/page.tsx
-import Layout from "../app/components/Layout"; // Import the Layout component
-import Image from "next/image";
+"use client"; // Marks this as a client component
+import HomeLayout from "../app/components/HomeLayout"; // Import the new HomeLayout component
+import "../app/HomePage/HomePage.css"; // Import custom CSS
 
-export default function Page() {
+export default function HomePage() {
+  // Function to handle Google login
+  const handleGoogleLogin = () => {
+    const authUrl =
+      process.env.NEXT_PUBLIC_AUTH_URL ||
+      "http://localhost:3000/api/auth/google";
+    window.location.href = authUrl;
+  };
+
   return (
-    <Layout>
-      {/* Content specific to this page */}
-      <div className="flex flex-col">
-        <div className="flex items-center justify-center h-20 bg-blue-500 rounded-lg p-4">
-          <h2 className="text-white">AcmeLogo Placeholder</h2>
-        </div>
+    <HomeLayout>
+      {/* Unique content of the HomePage */}
+      <div className="home-page-container flex flex-col items-center justify-center min-h-screen text-center">
+        <h1 className="text-5xl font-bold mb-6">Welcome to Facial Rec</h1>
+        <p className="text-lg mb-8 max-w-md leading-relaxed">
+          A secure, cloud-based storage system with advanced facial recognition
+          technology.
+        </p>
 
-        <div className="mt-4 flex flex-col gap-4">
-          <div className="flex justify-center items-center p-6 bg-gray-50 rounded-lg shadow-md">
-            <p className="text-xl text-gray-create">
-              <strong className="text-black"> Welcome to FacialRec.</strong>
-            </p>
-          </div>
-
-          <div className="flex justify-center p-6">
-            <Image
-              src="/hero-mobile.png"
-              width={560}
-              height={620}
-              className="block md:hidden"
-              alt="Screenshot of the dashboard project showing mobile version"
-            />
-          </div>
+        {/* Single Button for Google Login */}
+        <div className="button-group">
+          <button
+            onClick={handleGoogleLogin}
+            className="custom-button px-6 py-3 bg-blue-500 rounded-lg text-white font-semibold hover:bg-blue-600 shadow-lg"
+          >
+            Sign Up / Login with Google
+          </button>
         </div>
       </div>
-    </Layout>
+    </HomeLayout>
   );
 }

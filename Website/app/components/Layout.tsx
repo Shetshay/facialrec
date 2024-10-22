@@ -26,10 +26,9 @@ export default function Layout({ children }: LayoutProps) {
   const [isNightMode, setIsNightMode] = useState(true); // Manage day/night mode state
 
   const navItems = [
-    { label: "DashBoard", href: "/" },
+    { label: "DashBoard", href: "/UserPage" },
     { label: "User", href: "/user" },
     { label: "Files", href: "/files" },
-    { label: "Landing Page", href: "/HomePage" },
   ];
 
   // Function to toggle between day and night modes
