@@ -173,12 +173,14 @@ func (s *Server) userCookieInfo(c *gin.Context) {
 	}
 
 	userEmail, ok := session.Values["user_email"].(string)
+    userfName := session.Values["user_fName"].(string)
+    userlName := session.Values["user_lName"].(string)
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"email": userEmail})
+    c.JSON(http.StatusOK, gin.H{"email": userEmail, "firstName": userfName, "lastName": userlName})
 }
 
 func (s *Server) uploadHandler(c *gin.Context) {
@@ -217,7 +219,7 @@ func (s *Server) uploadHandler(c *gin.Context) {
 	}
 
 	log.Println("Running face_scan.py script")
-	cmd := exec.Command("python3", "face_scan.py")
+    cmd := exec.Command("python3", "../../../pythonFacialRec/face_scan.py")
 	err = cmd.Run()
 	if err != nil {
 		log.Printf("Error running face_scan.py: %v", err)
@@ -271,7 +273,7 @@ func (s *Server) checkImageHandler(c *gin.Context) {
 func (s *Server) encryptHandler(c *gin.Context) {
 	log.Println("Received encrypt request")
 
-	cmd := exec.Command("python3", "encrypt.py")
+	cmd := exec.Command("python3", "../pythonFacialRec/encrypt.py")
 	err := cmd.Run()
 	if err != nil {
 		log.Printf("Error running encrypt.py: %v", err)
@@ -285,7 +287,7 @@ func (s *Server) encryptHandler(c *gin.Context) {
 func (s *Server) decryptHandler(c *gin.Context) {
 	log.Println("Received decrypt request")
 
-	cmd := exec.Command("python3", "decrypt.py")
+	cmd := exec.Command("python3", "../pythonFacialRec/decrypt.py")
 	err := cmd.Run()
 	if err != nil {
 		log.Printf("Error running decrypt.py: %v", err)
