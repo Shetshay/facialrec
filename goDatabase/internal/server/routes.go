@@ -225,7 +225,7 @@ func (s *Server) uploadHandler(c *gin.Context) {
 	}
 
 	log.Println("Running face_scan.py script")
-    cmd := exec.Command("python3", "../../../pythonFacialRec/face_scan.py")
+    cmd := exec.Command("python3", "../pythonFacialRec/face_scan.py")
 	err = cmd.Run()
 	if err != nil {
 		log.Printf("Error running face_scan.py: %v", err)
@@ -235,16 +235,24 @@ func (s *Server) uploadHandler(c *gin.Context) {
 
 	detectedFileName := "detected_" + targetFileName
 	outputTxtFile := targetFileName[:len(targetFileName)-len(".jpg")] + ".txt"
+    fmt.Println(outputTxtFile)
 
 	if targetFileName == "logout.jpg" || !updateOriginTxt {
 		log.Println("Running face_data.py script")
-		cmd = exec.Command("python3", "face_data.py", targetFileName, outputTxtFile)
-		err = cmd.Run()
+		cmd = exec.Command("python3", "../pythonFacialRec/face_data.py", targetFileName, outputTxtFile)
+        cmdOutput, err := cmd.CombinedOutput()
+//		err = cmd.Run()
 		if err != nil {
 			log.Printf("Error running face_data.py: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing face data"})
 			return
 		}
+
+        log.Println("output of code is:")
+        log.Printf("%s", cmdOutput)
+
+
+
 	}
 
 	if _, err := os.Stat(detectedFileName); err == nil {

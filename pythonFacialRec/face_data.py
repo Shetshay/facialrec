@@ -35,7 +35,7 @@ def compare_faces(encoding1, encoding2, tolerance=0.6):
     pcc = calculate_pcc(encoding1, encoding2)
     # Calculate Cosine Similarity
     cosine_sim = calculate_cosine_similarity(encoding1, encoding2)
-    
+
     # Return the individual metrics
     return distance, pcc, cosine_sim
 
@@ -45,17 +45,17 @@ def calculate_weighted_score(distance, pcc, cosine_sim, tolerance=0.6):
     weight_euclidean = 0.3
     weight_pcc = 0.4
     weight_cosine = 0.3
-    
+
     # Normalize Euclidean distance to a 0-1 range (1 means perfect match, 0 means mismatch)
     # Assuming tolerance is the max acceptable distance for a match
     normalized_distance = max(0, (tolerance - distance) / tolerance)
-    
+
     # PCC and Cosine Similarity are already in the 0-1 range
     # Combine the weighted scores
     weighted_score = (weight_euclidean * normalized_distance) + \
                      (weight_pcc * pcc) + \
                      (weight_cosine * cosine_sim)
-    
+
     return weighted_score
 
 # Function to extract face encoding from an image file
@@ -70,8 +70,8 @@ def get_face_encoding(image_path):
 
 # Main program to compare origin.jpg and logout.jpg
 def main():
-    origin_image_path = 'origin.jpg'
-    logout_image_path = 'logout.jpg'
+    origin_image_path = '../goDatabase/origin.jpg'
+    logout_image_path = '../goDatabase/logout.jpg'
 
     # Check if both images exist in the directory
     if not os.path.exists(origin_image_path) or not os.path.exists(logout_image_path):

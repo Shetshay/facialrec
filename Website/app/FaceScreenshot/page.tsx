@@ -48,7 +48,7 @@ const FaceScreenshot = () => {
           try {
             setLoading(true);
             // Upload snapshot to your backend
-            const response = await fetch('http://localhost:8080/upload', {
+            const response = await fetch('http://localhost:3000/api/upload', {
               method: 'POST',
               body: formData,
             });
@@ -56,7 +56,7 @@ const FaceScreenshot = () => {
             if (response.ok) {
               setSnapshotMessage('Picture has been taken and processed');
               // After taking the snapshot, redirect to the UserPage
-              router.push('/UserPage');
+//              router.push('/UserPage');
             } else {
               setSnapshotMessage('Error processing picture');
             }

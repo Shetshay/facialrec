@@ -13,8 +13,8 @@ face_mesh = mp_face_mesh.FaceMesh(
 )
 
 # Define image paths
-default_image_path = 'origin.jpg'
-alternative_image_path = 'logout.jpg'
+default_image_path = '../goDatabase/origin.jpg'
+alternative_image_path = '../goDatabase/logout.jpg'
 
 # Select the image to use
 image_path = alternative_image_path if os.path.exists(alternative_image_path) else default_image_path
