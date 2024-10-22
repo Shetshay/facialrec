@@ -7,7 +7,7 @@ export default function HomePage() {
   const handleGoogleLogin = () => {
     const authUrl =
       process.env.NEXT_PUBLIC_AUTH_URL ||
-      "http://localhost:3000/api/auth/google";
+      "http://localhost:3000/api/auth/signin/google"; // Adjusted to use 'signin' endpoint of NextAuth
     window.location.href = authUrl;
   };
 
@@ -17,8 +17,7 @@ export default function HomePage() {
       <div className="home-page-container flex flex-col items-center justify-center min-h-screen text-center">
         <h1 className="text-5xl font-bold mb-6">Welcome to Facial Rec</h1>
         <p className="text-lg mb-8 max-w-md leading-relaxed">
-          A secure, cloud-based storage system with advanced facial recognition
-          technology.
+          A secure, cloud-based storage system with advanced facial recognition technology.
         </p>
 
         {/* Single Button for Google Login */}

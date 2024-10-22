@@ -21,6 +21,8 @@ func (s *Server) RegisterRoutes() *gin.Engine {
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -59,7 +61,9 @@ func (s *Server) healthHandler(c *gin.Context) {
 
 func (s *Server) logoutHandler(c *gin.Context) {
 	provider := c.Param("provider")
+	provider := c.Param("provider")
 
+	ctx := context.WithValue(c.Request.Context(), "provider", provider)
 	ctx := context.WithValue(c.Request.Context(), "provider", provider)
 
 	session, err := auth.Store.Get(c.Request, auth.SessionName)
@@ -79,6 +83,7 @@ func (s *Server) logoutHandler(c *gin.Context) {
 	}
 
 	gothic.Logout(c.Writer, c.Request.WithContext(ctx))
+	gothic.Logout(c.Writer, c.Request.WithContext(ctx))
 
 	homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
 	if homepageURL == "" {
@@ -91,7 +96,14 @@ func (s *Server) logoutHandler(c *gin.Context) {
 func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 	provider := c.Param("provider")
 	ctx := context.WithValue(c.Request.Context(), "provider", provider)
+	provider := c.Param("provider")
+	ctx := context.WithValue(c.Request.Context(), "provider", provider)
 
+	session, err := auth.Store.Get(c.Request, auth.SessionName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session", "details": err.Error()})
+		return
+	}
 	session, err := auth.Store.Get(c.Request, auth.SessionName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session", "details": err.Error()})
@@ -142,9 +154,10 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 
 	homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
 	if homepageURL == "" {
-		homepageURL = "http://localhost:8000"
+		homepageURL = "http://localhost:8000/FaceScreenshot"
 	}
 
+	c.Redirect(http.StatusFound, homepageURL)
 	c.Redirect(http.StatusFound, homepageURL)
 }
 
@@ -155,7 +168,12 @@ func (s *Server) authHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "You must select a provider"})
 		return
 	}
+	if provider == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "You must select a provider"})
+		return
+	}
 
+	ctx := context.WithValue(c.Request.Context(), "provider", provider)
 	ctx := context.WithValue(c.Request.Context(), "provider", provider)
 
 	if gothUser, err := gothic.CompleteUserAuth(c.Writer, c.Request.WithContext(ctx)); err == nil {
@@ -166,6 +184,11 @@ func (s *Server) authHandler(c *gin.Context) {
 }
 
 func (s *Server) userCookieInfo(c *gin.Context) {
+	session, err := auth.Store.Get(c.Request, auth.SessionName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session"})
+		return
+	}
 	session, err := auth.Store.Get(c.Request, auth.SessionName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session"})
