@@ -1,0 +1,48 @@
+services:
+  frontend:
+    image: frontend:latest  # Replace with your frontend image
+    build:
+      context: ./Website
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Website:/frontend
+    networks:
+      - app-network
+
+  backend:
+    image: backend:latest  # Replace with your backend image
+    build:
+      context: ./goDatabase
+    environment:
+      DATABASE_URL: postgres://${DB_USERNAME}:${DB_PASSWORD}@psql:5432/${DB_DATABASE}  # Connection string to PostgreSQL
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./goDatabase:/backend
+    depends_on:
+      - psql
+    networks:
+      - app-network
+
+  psql:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - psql_volume:/var/lib/postgresql/data
+      - ./goDatabase/sql/mainTables.sql:/docker-entrypoint-initdb.d/mainTables.sql
+    networks:
+      - app-network
+
+volumes:
+  psql_volume:
+
+networks:
+  app-network:
+    external: true
+

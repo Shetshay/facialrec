@@ -11,6 +11,12 @@ services:
     volumes:
       - psql_volume:/var/lib/postgresql/data
       - ./sql/mainTables.sql:/docker-entrypoint-initdb.d/mainTables.sql
+    networks:
+      - app-network
 
 volumes:
   psql_volume:
+
+networks:
+  app-network:
+    external: true

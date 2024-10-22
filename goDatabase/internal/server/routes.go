@@ -10,10 +10,11 @@ import (
 	"os/exec"
 	"time"
 
+	"goDatabase/internal/auth"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/markbates/goth/gothic"
-	"goDatabase/internal/auth"
 )
 
 func (s *Server) RegisterRoutes() *gin.Engine {
@@ -179,14 +180,14 @@ func (s *Server) userCookieInfo(c *gin.Context) {
 	}
 
 	userEmail, ok := session.Values["user_email"].(string)
-    userfName := session.Values["user_fName"].(string)
-    userlName := session.Values["user_lName"].(string)
+	userfName := session.Values["user_fName"].(string)
+	userlName := session.Values["user_lName"].(string)
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-    c.JSON(http.StatusOK, gin.H{"email": userEmail, "firstName": userfName, "lastName": userlName})
+	c.JSON(http.StatusOK, gin.H{"email": userEmail, "firstName": userfName, "lastName": userlName})
 }
 
 func (s *Server) uploadHandler(c *gin.Context) {
@@ -225,7 +226,7 @@ func (s *Server) uploadHandler(c *gin.Context) {
 	}
 
 	log.Println("Running face_scan.py script")
-    cmd := exec.Command("python3", "../pythonFacialRec/face_scan.py")
+	cmd := exec.Command("python3", "./pythonFacialRec/face_scan.py")
 	err = cmd.Run()
 	if err != nil {
 		log.Printf("Error running face_scan.py: %v", err)
@@ -235,23 +236,21 @@ func (s *Server) uploadHandler(c *gin.Context) {
 
 	detectedFileName := "detected_" + targetFileName
 	outputTxtFile := targetFileName[:len(targetFileName)-len(".jpg")] + ".txt"
-    fmt.Println(outputTxtFile)
+	fmt.Println(outputTxtFile)
 
 	if targetFileName == "logout.jpg" || !updateOriginTxt {
 		log.Println("Running face_data.py script")
-		cmd = exec.Command("python3", "../pythonFacialRec/face_data.py", targetFileName, outputTxtFile)
-        cmdOutput, err := cmd.CombinedOutput()
-//		err = cmd.Run()
+		cmd = exec.Command("python3", "./pythonFacialRec/face_data.py", targetFileName, outputTxtFile)
+		cmdOutput, err := cmd.CombinedOutput()
+		//		err = cmd.Run()
 		if err != nil {
 			log.Printf("Error running face_data.py: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing face data"})
 			return
 		}
 
-        log.Println("output of code is:")
-        log.Printf("%s", cmdOutput)
-
-
+		log.Println("output of code is:")
+		log.Printf("%s", cmdOutput)
 
 	}
 
@@ -287,7 +286,7 @@ func (s *Server) checkImageHandler(c *gin.Context) {
 func (s *Server) encryptHandler(c *gin.Context) {
 	log.Println("Received encrypt request")
 
-	cmd := exec.Command("python3", "../pythonFacialRec/encrypt.py")
+	cmd := exec.Command("python3", "./pythonFacialRec/encrypt.py")
 	err := cmd.Run()
 	if err != nil {
 		log.Printf("Error running encrypt.py: %v", err)
@@ -301,7 +300,7 @@ func (s *Server) encryptHandler(c *gin.Context) {
 func (s *Server) decryptHandler(c *gin.Context) {
 	log.Println("Received decrypt request")
 
-	cmd := exec.Command("python3", "../pythonFacialRec/decrypt.py")
+	cmd := exec.Command("python3", "./pythonFacialRec/decrypt.py")
 	err := cmd.Run()
 	if err != nil {
 		log.Printf("Error running decrypt.py: %v", err)

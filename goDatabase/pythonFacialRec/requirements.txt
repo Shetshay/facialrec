@@ -3,4 +3,5 @@ face_recognition
 opencv-python
 mediapipe
 numpy
+scikit-learn
 

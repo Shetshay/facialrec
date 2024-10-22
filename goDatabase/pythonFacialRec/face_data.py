@@ -70,8 +70,8 @@ def get_face_encoding(image_path):
 
 # Main program to compare origin.jpg and logout.jpg
 def main():
-    origin_image_path = '../goDatabase/origin.jpg'
-    logout_image_path = '../goDatabase/logout.jpg'
+    origin_image_path = './origin.jpg'
+    logout_image_path = './logout.jpg'
 
     # Check if both images exist in the directory
     if not os.path.exists(origin_image_path) or not os.path.exists(logout_image_path):
@@ -111,6 +111,9 @@ def main():
             formatted_logout_encoding = ''.join(f"({x:.2f}, {y:.2f})\n" for x, y in enumerate(logout_encoding))
             file1.write(f"Landmark positions for '{origin_image_path}':\n{formatted_origin_encoding}\n")
             file2.write(f"Landmark positions for '{logout_image_path}':\n{formatted_logout_encoding}\n")
+
+            print(origin_encoding)
+            print(logout_encoding)
 
     except ValueError as e:
         logging.error(e)
