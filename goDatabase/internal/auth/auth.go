@@ -6,8 +6,8 @@ import (
 
     "github.com/gorilla/sessions"
     "github.com/joho/godotenv"
-    "github.com/markbates/goth/gothic"
     "github.com/markbates/goth"
+    "github.com/markbates/goth/gothic"
     "github.com/markbates/goth/providers/google"
 )
 
@@ -48,18 +48,19 @@ func NewAuth() {
         Secure:   os.Getenv("GIN_MODE") == "release", // True if in production
     }
 
+//    Store.Options.SameSite = http.SameSiteStrictMode
+
     gothic.Store = Store
 
     callbackURL := os.Getenv("OAUTH_CALLBACK_URL")
 
 
     if callbackURL == "" {
-     callbackURL = "http://facialrec.org/api/auth/google/callback"
+        callbackURL = "http://facialrec.org/api/auth/google/callback"
     }
 
     goth.UseProviders(
         google.New(googleClientId, googleClientSecret, callbackURL, "profile", "email"),
-    )
-
+        )
 
 }
