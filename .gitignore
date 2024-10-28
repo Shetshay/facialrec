@@ -3,3 +3,8 @@
 # Ignore executables
 *.exe
 *.out
+
+#IGNORING THE .JPG AND .TXT IN GODATABASE FOLDER
+goDatabase/*.txt
+goDatabase/*.jpg
+
