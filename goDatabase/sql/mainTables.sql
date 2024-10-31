@@ -12,7 +12,8 @@ create table userInfo (
     userEmail VARCHAR(255) NOT NULL UNIQUE, -- Email from Google
     signupDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Sign-up date
     lastLogin TIMESTAMP NOT NULL, -- Last login time (OAuth authentication time)
-    googleAuthToken VARCHAR(512) -- Store the Google OAuth2 token if needed
+    googleAuthToken VARCHAR(512), -- Store the Google OAuth2 token if needed
+    bucketName VARCHAR(255) UNIQUE -- MinIO bucket name for the user
 );
 
 drop table if exists Folder cascade;

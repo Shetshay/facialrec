@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -15,13 +16,14 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/markbates/goth/gothic"
+	"github.com/minio/minio-go/v7"
 )
 
 func (s *Server) RegisterRoutes() *gin.Engine {
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8000"}, // Add both domains
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -39,7 +41,7 @@ func (s *Server) RegisterRoutes() *gin.Engine {
 	r.GET("/api/userCookieInfo", s.userCookieInfo)
 	r.GET("/api/logout/:provider", s.logoutHandler)
 
-	r.POST("/api/upload", s.uploadHandler)
+	r.POST("/api/upload", s.uploadFileHandler)
 	r.GET("/api/check-image", s.checkImageHandler)
 	r.POST("/api/encrypt", s.encryptHandler)
 	r.POST("/api/decrypt", s.decryptHandler)
@@ -80,7 +82,6 @@ func (s *Server) logoutHandler(c *gin.Context) {
 	}
 
 	gothic.Logout(c.Writer, c.Request.WithContext(ctx))
-	gothic.Logout(c.Writer, c.Request.WithContext(ctx))
 
 	homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
 	if homepageURL == "" {
@@ -102,12 +103,13 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 
 	user, err := gothic.CompleteUserAuth(c.Writer, c.Request.WithContext(ctx))
 	if err != nil {
-		c.String(http.StatusInternalServerError, fmt.Sprintf("Error: during user authentication %v", err))
+		c.String(http.StatusInternalServerError, fmt.Sprintf("Error during user authentication: %v", err))
 		return
 	}
 
 	userEmail := user.Email
 
+	// Save user info in session
 	session.Values["user_email"] = user.Email
 	session.Values["user_accesstoken"] = user.AccessToken
 	session.Values["user_idtoken"] = user.IDToken
@@ -120,21 +122,32 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 		return
 	}
 
+	// Check if user exists in the database
 	exists, err := s.db.IsUserInDatabase(userEmail)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking user in database", "details": err.Error()})
 		return
 	}
 
+	var internalUserID int
 	if exists {
+		// Update last login time
 		err = s.db.UpdateLastLogin(userEmail)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating last login", "details": err.Error()})
 			return
 		}
 		fmt.Println("User already exists. Last login time updated.")
+
+		// Get internal user ID
+		internalUserID, err = s.db.GetUserIDByEmail(userEmail)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving user ID", "details": err.Error()})
+			return
+		}
 	} else {
-		err = s.db.AddUser(user.FirstName, user.LastName, userEmail, user.AccessToken, user.UserID)
+		// Add user to the database
+		internalUserID, err = s.db.AddUser(user.FirstName, user.LastName, userEmail, user.AccessToken, user.UserID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to database", "details": err.Error()})
 			return
@@ -142,14 +155,97 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 		fmt.Println("User added to the database.")
 	}
 
+	// Generate bucket name
+	bucketName := fmt.Sprintf("user-%d", internalUserID)
+
+	// Check if the bucket exists
+	minioCtx := context.Background()
+	exists, err = s.minioClient.BucketExists(minioCtx, bucketName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking bucket existence", "details": err.Error()})
+		return
+	}
+
+	if !exists {
+		// Create the bucket
+		err = s.minioClient.MakeBucket(minioCtx, bucketName, minio.MakeBucketOptions{})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating bucket", "details": err.Error()})
+			return
+		}
+		fmt.Printf("Bucket %s created successfully\n", bucketName)
+	} else {
+		fmt.Printf("Bucket %s already exists\n", bucketName)
+	}
+
+	// Update user's bucket name in the database
+	err = s.db.UpdateUserBucketName(userEmail, bucketName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating user bucket name", "details": err.Error()})
+		return
+	}
+
+	// Redirect to homepage or desired page
 	homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
 	if homepageURL == "" {
 		homepageURL = "http://localhost:8000/FaceScreenshot"
 	}
 
 	c.Redirect(http.StatusFound, homepageURL)
-	c.Redirect(http.StatusFound, homepageURL)
 }
+
+func (s *Server) uploadFileHandler(c *gin.Context) {
+    // Get the session
+    session, err := auth.Store.Get(c.Request, auth.SessionName)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session", "details": err.Error()})
+        return
+    }
+
+    // Get userEmail from session
+    userEmail, ok := session.Values["user_email"].(string)
+    if !ok || userEmail == "" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
+        return
+    }
+
+    // Get the user's bucket name from the database
+    bucketName, err := s.db.GetBucketNameByEmail(userEmail)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving bucket name", "details": err.Error()})
+        return
+    }
+	//TAKE A LOOK HERE JACOB
+    // Get the file from the request
+    file, header, err := c.Request.FormFile("file")
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get file from request", "details": err.Error()})
+        return
+    }
+    defer file.Close()
+
+    // Read the file content
+    fileBytes, err := io.ReadAll(file)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file", "details": err.Error()})
+        return
+    }
+
+    // Upload the file to MinIO
+    objectName := header.Filename
+    reader := bytes.NewReader(fileBytes)
+    objectSize := int64(len(fileBytes))
+    contentType := header.Header.Get("Content-Type")
+
+    _, err = s.minioClient.PutObject(context.Background(), bucketName, objectName, reader, objectSize, minio.PutObjectOptions{ContentType: contentType})
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file to MinIO", "details": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "fileName": objectName})
+}
+
 
 func (s *Server) authHandler(c *gin.Context) {
 	provider := c.Param("provider")
@@ -158,12 +254,8 @@ func (s *Server) authHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "You must select a provider"})
 		return
 	}
-	if provider == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "You must select a provider"})
-		return
-	}
 
-	ctx := context.WithValue(c.Request.Context(), "provider", provider)
+	ctx := context.WithValue(c.Request.Context(), "provider", provider) 
 
 	if gothUser, err := gothic.CompleteUserAuth(c.Writer, c.Request.WithContext(ctx)); err == nil {
 		c.JSON(http.StatusOK, gothUser)
@@ -190,10 +282,11 @@ func (s *Server) userCookieInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"email": userEmail, "firstName": userfName, "lastName": userlName})
 }
 
+// Note: Adjusted the uploadHandler to comply with the updates
 func (s *Server) uploadHandler(c *gin.Context) {
 	log.Println("Received upload request")
 
-	file, _, err := c.Request.FormFile("file")
+	file, header, err := c.Request.FormFile("file")
 	if err != nil {
 		log.Printf("Error getting file from form: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to read file"})
@@ -208,59 +301,39 @@ func (s *Server) uploadHandler(c *gin.Context) {
 		return
 	}
 
-	targetFileName := "origin.jpg"
-	updateOriginTxt := false
-	if _, err := os.Stat(targetFileName); err == nil {
-		targetFileName = "logout.jpg"
-		updateOriginTxt = true
-		log.Println("origin.jpg exists, updating target to logout.jpg")
-	} else {
-		log.Println("No origin.jpg, using origin.jpg as target")
-	}
-
-	err = os.WriteFile(targetFileName, fileBytes, 0644)
+	// Get the user's bucket name from the database
+	session, err := auth.Store.Get(c.Request, auth.SessionName)
 	if err != nil {
-		log.Printf("Error writing file: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unable to write file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session"})
 		return
 	}
 
-	log.Println("Running face_scan.py script")
-	cmd := exec.Command("python3", "./pythonFacialRec/face_scan.py")
-	err = cmd.Run()
-	if err != nil {
-		log.Printf("Error running face_scan.py: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing face scan"})
+	userEmail, ok := session.Values["user_email"].(string)
+	if !ok || userEmail == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
 		return
 	}
 
-	detectedFileName := "detected_" + targetFileName
-	outputTxtFile := targetFileName[:len(targetFileName)-len(".jpg")] + ".txt"
-	fmt.Println(outputTxtFile)
-
-	if targetFileName == "logout.jpg" || !updateOriginTxt {
-		log.Println("Running face_data.py script")
-		cmd = exec.Command("python3", "./pythonFacialRec/face_data.py", targetFileName, outputTxtFile)
-		cmdOutput, err := cmd.CombinedOutput()
-		//		err = cmd.Run()
-		if err != nil {
-			log.Printf("Error running face_data.py: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing face data"})
-			return
-		}
-
-		log.Println("output of code is:")
-		log.Printf("%s", cmdOutput)
-
+	bucketName, err := s.db.GetBucketNameByEmail(userEmail)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving bucket name", "details": err.Error()})
+		return
 	}
 
-	if _, err := os.Stat(detectedFileName); err == nil {
-		log.Printf("File %s found, upload successful", detectedFileName)
-		c.JSON(http.StatusOK, gin.H{"message": "File uploaded and processed successfully"})
-	} else {
-		log.Printf("Detected file %s not found", detectedFileName)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": detectedFileName + " not found"})
+	// Upload the file to MinIO
+	fileName := header.Filename
+	reader := bytes.NewReader(fileBytes)
+	objectSize := int64(len(fileBytes))
+	contentType := header.Header.Get("Content-Type")
+
+	_, err = s.minioClient.PutObject(context.Background(), bucketName, fileName, reader, objectSize, minio.PutObjectOptions{ContentType: contentType})
+	if err != nil {
+		log.Printf("Error uploading file to MinIO: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error uploading file"})
+		return
 	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully"})
 }
 
 func (s *Server) checkImageHandler(c *gin.Context) {

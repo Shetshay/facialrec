@@ -13,17 +13,21 @@ import (
 )
 
 type UserInfo struct {
-	userID    int
-	userName  string
-	userEmail string
-	lastLogin time.Time
+	UserID     int
+	UserName   string
+	UserEmail  string
+	LastLogin  time.Time
+	BucketName string
 }
 
 type Service interface {
 	Health() map[string]string
 	IsUserInDatabase(email string) (bool, error)
-	AddUser(fName, lName, email, authToken, oauthID string) error
-	UpdateLastLogin(email string) error // New method for updating lastLogin
+	AddUser(fName, lName, email, authToken, oauthID string) (int, error)
+	UpdateLastLogin(email string) error
+	UpdateUserBucketName(userEmail string, bucketName string) error
+	GetUserIDByEmail(email string) (int, error)
+	GetBucketNameByEmail(email string) (string, error)
 }
 
 type service struct {
@@ -45,6 +49,13 @@ func New() Service {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Test the database connection
+	err = db.Ping()
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
 	s := &service{db: db}
 	return s
 }
@@ -55,11 +66,16 @@ func (s *service) Health() map[string]string {
 
 	err := s.db.PingContext(ctx)
 	if err != nil {
-		log.Fatalf(fmt.Sprintf("db down: %v", err))
+		log.Printf("Database down: %v", err)
+		return map[string]string{
+			"status":  "unhealthy",
+			"message": fmt.Sprintf("Database down: %v", err),
+		}
 	}
 
 	return map[string]string{
-		"message": "It's healthy!",
+		"status":  "healthy",
+		"message": "Database connection is healthy",
 	}
 }
 
@@ -74,14 +90,19 @@ func (s *service) IsUserInDatabase(email string) (bool, error) {
 	return exists, nil
 }
 
-// Add a new user to the database
-func (s *service) AddUser(fName, lName, email, authToken, oauthID string,) error {
-	query := `INSERT INTO userInfo (firstName, lastName, userEmail, lastLogin, googleauthtoken, googleuserid) VALUES ($1, $2, $3, $4, $5, $6)`
-	_, err := s.db.Exec(query, fName, lName, email, time.Now(), authToken, oauthID)
+// Add a new user to the database and return the userID
+func (s *service) AddUser(fName, lName, email, authToken, oauthID string) (int, error) {
+	query := `
+		INSERT INTO userInfo (firstName, lastName, userEmail, lastLogin, googleAuthToken, googleUserID)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING userID
+	`
+	var userID int
+	err := s.db.QueryRow(query, fName, lName, email, time.Now(), authToken, oauthID).Scan(&userID)
 	if err != nil {
-		return fmt.Errorf("failed to add user: %v", err)
+		return 0, fmt.Errorf("failed to add user: %v", err)
 	}
-	return nil
+	return userID, nil
 }
 
 // Update last login time for a user
@@ -94,3 +115,34 @@ func (s *service) UpdateLastLogin(email string) error {
 	return nil
 }
 
+// Update user's bucket name
+func (s *service) UpdateUserBucketName(userEmail string, bucketName string) error {
+	query := `UPDATE userInfo SET bucketName = $1 WHERE userEmail = $2`
+	_, err := s.db.Exec(query, bucketName, userEmail)
+	if err != nil {
+		return fmt.Errorf("failed to update user's bucket name: %v", err)
+	}
+	return nil
+}
+
+// Get userID by email
+func (s *service) GetUserIDByEmail(email string) (int, error) {
+	var userID int
+	query := `SELECT userID FROM userInfo WHERE userEmail = $1`
+	err := s.db.QueryRow(query, email).Scan(&userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get userID by email: %v", err)
+	}
+	return userID, nil
+}
+
+// Get bucket name by email
+func (s *service) GetBucketNameByEmail(email string) (string, error) {
+	var bucketName string
+	query := `SELECT bucketName FROM userInfo WHERE userEmail = $1`
+	err := s.db.QueryRow(query, email).Scan(&bucketName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get bucket name by email: %v", err)
+	}
+	return bucketName, nil
+}

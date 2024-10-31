@@ -5,56 +5,46 @@ all: build
 
 build:
 	@echo "Building..."
-	
 	@go build -o main cmd/api/main.go
 
+# Install dependencies
+deps:
+	@echo "Installing dependencies..."
+	@rm -f go.sum
+	@go mod download
+	@go mod tidy -compat=1.21
+
 # Run the application
-run:
+run: deps
 	@go run cmd/api/main.go
 
 # Create DB container
 docker-run:
 	@if docker compose up 2>/dev/null; then \
 		: ; \
-	else \
+		else \
 		echo "Falling back to Docker Compose V1"; \
 		docker-compose up; \
-	fi
+		fi
 
 # Shutdown DB container
 docker-down:
 	@if docker compose down 2>/dev/null; then \
 		: ; \
-	else \
+		else \
 		echo "Falling back to Docker Compose V1"; \
 		docker-compose down; \
-	fi
+		fi
 
 # Test the application
 test:
 	@echo "Testing..."
 	@go test ./tests -v
 
-# Clean the binary
+# Clean the binary and dependencies
 clean:
 	@echo "Cleaning..."
 	@rm -f main
+	@go clean -modcache
 
-# Live Reload
-watch:
-	@if command -v air > /dev/null; then \
-	    air; \
-	    echo "Watching...";\
-	else \
-	    read -p "Go's 'air' is not installed on your machine. Do you want to install it? [Y/n] " choice; \
-	    if [ "$$choice" != "n" ] && [ "$$choice" != "N" ]; then \
-	        go install github.com/cosmtrek/air@latest; \
-	        air; \
-	        echo "Watching...";\
-	    else \
-	        echo "You chose not to install air. Exiting..."; \
-	        exit 1; \
-	    fi; \
-	fi
-
-.PHONY: all build run test clean
+.PHONY: all build run test clean deps
