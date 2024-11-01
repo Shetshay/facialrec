@@ -30,9 +30,11 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN go install github.com/air-verse/air@latest
+
 EXPOSE 3000
 
 #comment out for development purposes
-CMD ["make", "run"]
+CMD ["make", "watch"]
 
 

@@ -41,6 +41,9 @@ test:
 	@echo "Testing..."
 	@go test ./tests -v
 
+watch:
+	@~/go/bin/air
+
 # Clean the binary and dependencies
 clean:
 	@echo "Cleaning..."

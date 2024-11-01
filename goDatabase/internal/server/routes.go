@@ -109,6 +109,7 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 
 	userEmail := user.Email
 
+
 	// Save user info in session
 	session.Values["user_email"] = user.Email
 	session.Values["user_accesstoken"] = user.AccessToken
@@ -215,7 +216,8 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving bucket name", "details": err.Error()})
         return
     }
-	//TAKE A LOOK HERE JACOB
+	// TAKE A LOOK HERE JACOB
+    // i seen it
     // Get the file from the request
     file, header, err := c.Request.FormFile("file")
     if err != nil {
@@ -255,7 +257,7 @@ func (s *Server) authHandler(c *gin.Context) {
 		return
 	}
 
-	ctx := context.WithValue(c.Request.Context(), "provider", provider) 
+	ctx := context.WithValue(c.Request.Context(), "provider", provider)
 
 	if gothUser, err := gothic.CompleteUserAuth(c.Writer, c.Request.WithContext(ctx)); err == nil {
 		c.JSON(http.StatusOK, gothUser)

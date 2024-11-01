@@ -57,7 +57,7 @@ func NewServer() *http.Server {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	fmt.Println("ALL SERVERS INITTLAITED")
+	fmt.Println("INITTLAITED SEVERS")
 
 
 	return server
