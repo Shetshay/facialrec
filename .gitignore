@@ -1,6 +1,7 @@
 .env
 .DS_Store # For macOS
 # Ignore executables
+main
 *.exe
 *.out
 
