@@ -11,6 +11,7 @@ const FaceScreenshot = () => {
   const analysisImageRef = useRef<HTMLImageElement>(null);
   const [snapshotMessage, setSnapshotMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [processingComplete, setProcessingComplete] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
@@ -36,6 +37,17 @@ const FaceScreenshot = () => {
       }
     };
   }, []);
+
+  // Add effect to handle redirect after processing is complete
+  useEffect(() => {
+    if (processingComplete) {
+      const redirectTimer = setTimeout(() => {
+        router.push('/files');
+      }, 1500); // Give user a moment to see the success message
+
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [processingComplete, router]);
 
   const takeSnapshot = async () => {
     if (!videoRef.current) return;
@@ -63,7 +75,7 @@ const FaceScreenshot = () => {
 
             if (response.ok) {
               setSnapshotMessage('Picture has been taken and processed');
-              checkProcessedImage();
+              await checkProcessedImage();
             } else {
               setSnapshotMessage('Error processing picture');
             }
@@ -88,10 +100,12 @@ const FaceScreenshot = () => {
         if (analysisImageRef.current) {
           analysisImageRef.current.src = `http://localhost:3000/images/${imageName}`;
           analysisImageRef.current.style.display = 'block';
+          setProcessingComplete(true); // Set processing complete after image is successfully loaded
         }
       }
     } catch (error) {
       console.error('Error checking processed image:', error);
+      setSnapshotMessage('Error verifying image processing');
     }
   };
 
@@ -115,7 +129,12 @@ const FaceScreenshot = () => {
             <img ref={analysisImageRef} width="640" height="480" style={{ display: 'none' }} />
           </div>
           <div className={styles.buttonContainer}>
-            <button onClick={takeSnapshot}>Take Snapshot</button>
+            <button 
+              onClick={takeSnapshot}
+              disabled={loading || processingComplete}
+            >
+              Take Snapshot
+            </button>
             <button
               onClick={() => {
                 window.location.href = process.env.NEXT_PUBLIC_LOGOUT_URL || 'http://localhost:3000/api/logout/google';
@@ -127,7 +146,12 @@ const FaceScreenshot = () => {
         </div>
         
         <div className={styles.message}>
-          {snapshotMessage && <p>{snapshotMessage}</p>}
+          {snapshotMessage && (
+            <p className={processingComplete ? styles.successMessage : ''}>
+              {snapshotMessage}
+              {processingComplete && " - Redirecting to files..."}
+            </p>
+          )}
         </div>
       </div>
     </ProtectedRoute>

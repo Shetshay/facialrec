@@ -4,10 +4,12 @@ import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
 import { FaTimes } from "react-icons/fa";
 import Image from "next/image";
+import { useAuth } from '../Context/AuthContext';
 
 export default function FilesPage() {
   const [files, setFiles] = useState<File[]>([]); // Initialize files as an empty array with type File
   const [editMode, setEditMode] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     // Fetch the list of files from the backend API
@@ -78,18 +80,25 @@ export default function FilesPage() {
 
   return (
     <Layout>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-white-800">Files</h1>
-        <div className="space-x-4">
-          <button
-            onClick={toggleEditMode}
-            className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900"
-          >
-            {editMode ? "Cancel" : "Edit"}
-          </button>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-            Upload
-          </button>
+      <div className="flex flex-col space-y-4 mb-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Files</h1>
+            {user && (
+              <p className="text-gray-600 mt-1">Welcome, {user.firstName}!</p>
+            )}
+          </div>
+          <div className="space-x-4">
+            <button
+              onClick={toggleEditMode}
+              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900"
+            >
+              {editMode ? "Cancel" : "Edit"}
+            </button>
+            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+              Upload
+            </button>
+          </div>
         </div>
       </div>
 
