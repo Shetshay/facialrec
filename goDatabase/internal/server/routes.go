@@ -275,6 +275,7 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 
 func (s *Server) uploadFileHandler(c *gin.Context) {
     // Get the session
+    userEmail := "voidspaceapp@gmail.com"
     session, err := auth.Store.Get(c.Request, auth.SessionName)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session", "details": err.Error()})
@@ -294,36 +295,82 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving bucket name", "details": err.Error()})
         return
     }
-    // TAKE A LOOK HERE JACOB
-    // i seen it
-    // Get the file from the request
-    file, header, err := c.Request.FormFile("file")
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get file from request", "details": err.Error()})
-        return
-    }
-    defer file.Close()
 
-    // Read the file content
-    fileBytes, err := io.ReadAll(file)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file", "details": err.Error()})
+    // Parse multipart form with a larger memory limit (32MB)
+    if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form", "details": err.Error()})
         return
     }
 
-    // Upload the file to MinIO
-    objectName := header.Filename
-    reader := bytes.NewReader(fileBytes)
-    objectSize := int64(len(fileBytes))
-    contentType := header.Header.Get("Content-Type")
+    form := c.Request.MultipartForm
+    files := form.File["files[]"] // Use files[] as the form field name for multiple files
+    basePath := c.Request.FormValue("path") // Get the base path from the form
 
-    _, err = s.minioClient.PutObject(context.Background(), bucketName, objectName, reader, objectSize, minio.PutObjectOptions{ContentType: contentType})
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file to MinIO", "details": err.Error()})
-        return
+    uploadedFiles := make([]string, 0)
+    failedFiles := make([]string, 0)
+
+    for _, fileHeader := range files {
+        file, err := fileHeader.Open()
+        if err != nil {
+            failedFiles = append(failedFiles, fileHeader.Filename)
+            continue
+        }
+        defer file.Close()
+
+        // Construct the object name preserving folder structure
+        objectName := fileHeader.Filename
+        if basePath != "" {
+            objectName = filepath.Join(basePath, objectName)
+        }
+
+        // Clean the path to prevent directory traversal
+        objectName = filepath.Clean(objectName)
+        // Convert Windows-style paths to forward slashes for MinIO
+        objectName = filepath.ToSlash(objectName)
+
+        // Read the file content
+        fileBytes, err := io.ReadAll(file)
+        if err != nil {
+            failedFiles = append(failedFiles, fileHeader.Filename)
+            continue
+        }
+
+        // Upload the file to MinIO
+        reader := bytes.NewReader(fileBytes)
+        objectSize := int64(len(fileBytes))
+        contentType := fileHeader.Header.Get("Content-Type")
+        if contentType == "" {
+            contentType = "application/octet-stream"
+        }
+
+        _, err = s.minioClient.PutObject(
+            context.Background(),
+            bucketName,
+            objectName,
+            reader,
+            objectSize,
+            minio.PutObjectOptions{ContentType: contentType},
+        )
+
+        if err != nil {
+            failedFiles = append(failedFiles, fileHeader.Filename)
+        } else {
+            uploadedFiles = append(uploadedFiles, objectName)
+        }
     }
 
-    c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully", "fileName": objectName})
+    // Prepare response
+    response := gin.H{
+        "uploaded_files": uploadedFiles,
+        "total_uploaded": len(uploadedFiles),
+    }
+
+    if len(failedFiles) > 0 {
+        response["failed_files"] = failedFiles
+        response["total_failed"] = len(failedFiles)
+    }
+
+    c.JSON(http.StatusOK, response)
 }
 
 
