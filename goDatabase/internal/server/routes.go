@@ -1,22 +1,23 @@
 package server
 
 import (
-    "bytes"
-    "context"
-    "fmt"
-    "io"
-    "log"
-    "net/http"
-    "os"
-    "os/exec"
-    "time"
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
 
-    "goDatabase/internal/auth"
+	"goDatabase/internal/auth"
 
-    "github.com/gin-contrib/cors"
-    "github.com/gin-gonic/gin"
-    "github.com/markbates/goth/gothic"
-    "github.com/minio/minio-go/v7"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/markbates/goth/gothic"
+	"github.com/minio/minio-go/v7"
 )
 
 func (s *Server) RegisterRoutes() *gin.Engine {
@@ -46,6 +47,9 @@ func (s *Server) RegisterRoutes() *gin.Engine {
     r.GET("/api/check-image", s.checkImageHandler)
     r.POST("/api/encrypt", s.encryptHandler)
     r.POST("/api/decrypt", s.decryptHandler)
+    r.GET("/api/downloadFile/:path", s.downloadFileHandler)
+
+    r.GET("/api/listBucket", s.listBucket)
 
     return r
 }
@@ -340,6 +344,8 @@ func (s *Server) authHandler(c *gin.Context) {
     }
 }
 
+
+
 func (s *Server) userCookieInfo(c *gin.Context) {
     session, err := auth.Store.Get(c.Request, auth.SessionName)
     if err != nil {
@@ -412,6 +418,7 @@ func (s *Server) uploadHandler(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{"message": "File uploaded successfully"})
 }
 
+
 func (s *Server) checkImageHandler(c *gin.Context) {
     log.Println("Received check image request")
     var imageName string
@@ -458,4 +465,88 @@ func (s *Server) decryptHandler(c *gin.Context) {
     }
 
     c.JSON(http.StatusOK, gin.H{"message": "Decryption process completed successfully"})
+}
+
+func (s *Server) downloadFileHandler(c *gin.Context) {
+    session, err := auth.Store.Get(c.Request, auth.SessionName)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+        return
+    }
+
+    userEmail, ok := session.Values["user_email"].(string)
+    if !ok {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+        return
+    }
+
+    filePath := c.Param("path")
+    bucketName := "your-bucket-name"
+    objectName := filepath.Join(userEmail, filePath)
+
+    // Get object from MinIO
+    object, err := s.minioClient.GetObject(context.Background(), bucketName, objectName, minio.GetObjectOptions{})
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file"})
+        return
+    }
+    defer object.Close()
+
+    // Get object info to set headers
+    objectInfo, err := object.Stat()
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+        return
+    }
+
+    // Set the headers for download
+    c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(filePath)))
+    c.Header("Content-Type", "application/octet-stream")
+    c.Header("Content-Length", fmt.Sprintf("%d", objectInfo.Size))
+
+    // Stream the file to response
+    if _, err := io.Copy(c.Writer, object); err != nil {
+        log.Printf("Error streaming file: %v", err)
+    }
+}
+
+// Add these handler functions
+func (s *Server) listBucket(c *gin.Context) {
+    // List all objects in bucket
+    ctx := context.Background()
+    bucketName := "user-1" // replace with your bucket name
+
+    // Create bucket if it doesn't exist
+    err := s.minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
+    if err != nil {
+        exists, errBucketExists := s.minioClient.BucketExists(ctx, bucketName)
+        if errBucketExists == nil && exists {
+            log.Printf("Bucket %s already exists", bucketName)
+        } else {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+            return
+        }
+    }
+
+    // List all objects
+    objectCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
+        Recursive: true,
+    })
+
+    var objects []map[string]interface{}
+    for object := range objectCh {
+        if object.Err != nil {
+            log.Printf("Error: %v", object.Err)
+            continue
+        }
+        objects = append(objects, map[string]interface{}{
+            "name":         object.Key,
+            "size":        object.Size,
+            "lastModified": object.LastModified,
+        })
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "files": objects,
+    })
 }
