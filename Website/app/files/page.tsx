@@ -1,34 +1,92 @@
 "use client";
 
-import Layout from "../components/Layout"; // Use the Layout component
-import { useState } from "react";
-import { FaTimes } from "react-icons/fa"; // Importing the icon for the X button
-import Image from 'next/image'; // Importing the Next.js Image component
-
-const mockFiles = [
-  { name: "Document 1.pdf", size: "1.2 MB", lastOpened: "2024-09-22" },
-  { name: "Image 2.png", size: "3.4 MB", lastOpened: "2024-09-21" },
-  { name: "Presentation.pptx", size: "5.8 MB", lastOpened: "2024-09-20" },
-];
+import Layout from "../components/Layout";
+import { useState, useEffect } from "react";
+import { FaTimes } from "react-icons/fa";
+import Image from "next/image";
 
 export default function FilesPage() {
-  const [files, setFiles] = useState(mockFiles);
+  const [files, setFiles] = useState<
+    { name: string; lastModified: number; size: number }[]
+  >([]);
   const [editMode, setEditMode] = useState(false);
+
+  useEffect(() => {
+    // Fetch the list of files from the backend API
+    const fetchFiles = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/api/listBucket", {
+          method: "GET",
+          credentials: "include", // Include cookies in the request
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Assuming the response is { files: [...] }
+          setFiles(data.files);
+        } else {
+          // Handle errors, e.g., unauthorized
+          console.error("Failed to fetch files:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error fetching files:", error);
+      }
+    };
+
+    fetchFiles();
+  }, []);
 
   const toggleEditMode = () => {
     setEditMode((prev) => !prev);
   };
 
-  const handleDeleteFile = (fileName: string) => {
+  interface DeleteFileResponse {
+    ok: boolean;
+    statusText: string;
+  }
+
+  const handleDeleteFile = async (fileName: string): Promise<void> => {
     const confirmed = window.confirm(
       `Are you sure you want to delete "${fileName}"?`
     );
     if (confirmed) {
-      // Filter out the file from the files list
-      setFiles((prevFiles) =>
-        prevFiles.filter((file) => file.name !== fileName)
-      );
+      try {
+        const response: DeleteFileResponse = await fetch(
+          "http://localhost:3000/api/deleteFile",
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ fileName }),
+          }
+        );
+        if (response.ok) {
+          // Remove the file from the state
+          setFiles((prevFiles) =>
+            prevFiles.filter((file) => file.name !== fileName)
+          );
+        } else {
+          console.error("Failed to delete file:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error deleting file:", error);
+      }
     }
+  };
+
+  interface File {
+    name: string;
+    lastModified: number;
+    size: number;
+  }
+
+  const handleDownloadFile = (fileName: string): void => {
+    // Implement the download logic here
+    // Redirect the browser to the download URL
+    window.location.href = `http://localhost:3000/api/downloadFile/${encodeURIComponent(
+      fileName
+    )}`;
   };
 
   return (
@@ -69,7 +127,10 @@ export default function FilesPage() {
             <div className="p-4 flex-grow">
               <h3 className="text-lg font-bold text-gray-800">{file.name}</h3>
               <p className="text-sm text-gray-600">
-                Last Opened: {file.lastOpened}
+                Last Modified: {new Date(file.lastModified).toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600">
+                Size: {formatFileSize(file.size)}
               </p>
             </div>
 
@@ -87,7 +148,10 @@ export default function FilesPage() {
 
             {/* Download Button */}
             <div className="bg-gray-100 p-4">
-              <button className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+              <button
+                onClick={() => handleDownloadFile(file.name)}
+                className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
                 Download
               </button>
             </div>
@@ -96,4 +160,15 @@ export default function FilesPage() {
       </div>
     </Layout>
   );
+}
+
+// Helper function to format file size
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  let kb = bytes / 1024;
+  if (kb < 1024) return kb.toFixed(2) + " KB";
+  let mb = kb / 1024;
+  if (mb < 1024) return mb.toFixed(2) + " MB";
+  let gb = mb / 1024;
+  return gb.toFixed(2) + " GB";
 }

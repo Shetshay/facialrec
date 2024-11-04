@@ -556,23 +556,41 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
         log.Printf("Error streaming file: %v", err)
     }
 }
-
-// Add these handler functions
 func (s *Server) listBucket(c *gin.Context) {
-    // List all objects in bucket
-    ctx := context.Background()
-    bucketName := "user-1" // replace with your bucket name
-
-    // Create bucket if it doesn't exist
-    err := s.minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
+    // Get the session
+    session, err := auth.Store.Get(c.Request, auth.SessionName)
     if err != nil {
-        exists, errBucketExists := s.minioClient.BucketExists(ctx, bucketName)
-        if errBucketExists == nil && exists {
-            log.Printf("Bucket %s already exists", bucketName)
-        } else {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-            return
-        }
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+        return
+    }
+
+    // Get userEmail from session
+    userEmail, ok := session.Values["user_email"].(string)
+    if !ok || userEmail == "" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
+        return
+    }
+
+    // Get the user's bucket name from the database
+    bucketName, err := s.db.GetBucketNameByEmail(userEmail)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving bucket name", "details": err.Error()})
+        return
+    }
+
+    // Proceed to list the bucket
+    ctx := context.Background()
+
+    // Ensure bucket exists
+    exists, err := s.minioClient.BucketExists(ctx, bucketName)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    if !exists {
+        c.JSON(http.StatusNotFound, gin.H{"error": "Bucket does not exist"})
+        return
     }
 
     // List all objects
@@ -588,7 +606,7 @@ func (s *Server) listBucket(c *gin.Context) {
         }
         objects = append(objects, map[string]interface{}{
             "name":         object.Key,
-            "size":        object.Size,
+            "size":         object.Size,
             "lastModified": object.LastModified,
         })
     }
