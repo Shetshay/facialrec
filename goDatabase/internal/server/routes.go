@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -530,14 +531,30 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
         return
     }
 
+    // Get bucket name
+    bucketName, err := s.db.GetBucketNameByEmail(userEmail)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name", "details": err.Error()})
+        return
+    }
+
+    // Get file path from URL parameter
     filePath := c.Param("path")
-    bucketName := "your-bucket-name"
-    objectName := filepath.Join(userEmail, filePath)
+
+    // Decode URL-encoded file path
+    objectName, err := url.PathUnescape(filePath)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
+        return
+    }
+
+    // Clean the object name to prevent path traversal
+    objectName = filepath.Clean(objectName)
 
     // Get object from MinIO
     object, err := s.minioClient.GetObject(context.Background(), bucketName, objectName, minio.GetObjectOptions{})
     if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file"})
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get file", "details": err.Error()})
         return
     }
     defer object.Close()
@@ -550,7 +567,7 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
     }
 
     // Set the headers for download
-    c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(filePath)))
+    c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(objectName)))
     c.Header("Content-Type", "application/octet-stream")
     c.Header("Content-Length", fmt.Sprintf("%d", objectInfo.Size))
 
@@ -559,6 +576,7 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
         log.Printf("Error streaming file: %v", err)
     }
 }
+
 func (s *Server) listBucket(c *gin.Context) {
     // Get the session
     session, err := auth.Store.Get(c.Request, auth.SessionName)
