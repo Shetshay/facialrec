@@ -69,6 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+
+
+  
+
   // Add another useEffect to monitor user state changes
   useEffect(() => {
     console.log('Current user state:', user);

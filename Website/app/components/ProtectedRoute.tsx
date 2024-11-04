@@ -1,33 +1,44 @@
-// app/components/ProtectedRoute.tsx
 "use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../Context/AuthContext';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, checkAuth } = useAuth();
   const router = useRouter();
   const [mountedOnce, setMountedOnce] = useState(false);
 
   useEffect(() => {
-    setMountedOnce(true);
-  }, []);
+    const verifyAuth = async () => {
+      if (!mountedOnce) {
+        setMountedOnce(true);
+        await checkAuth();
+      }
+      
+      if (!isLoading && !user) {
+        console.log('No user found in protected route, redirecting...');
+        router.push('/');
+      }
+    };
 
-  useEffect(() => {
-    console.log('Protected Route - User:', user, 'IsLoading:', isLoading);
-    
-    // Only redirect if we're not loading and have mounted
-    if (!isLoading && mountedOnce && !user) {
-      console.log('Redirecting to home - no user found');
-      router.push('/');
-    }
-  }, [user, isLoading, router, mountedOnce]);
+    verifyAuth();
+  }, [user, isLoading, router, mountedOnce, checkAuth]);
 
-  // Show loading state only initially
-  if (isLoading && !mountedOnce) {
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500">
+          <span className="sr-only">Loading...</span>
+        </div>
+      </div>
+    );
   }
 
-  // Return children if we have a user or are still in initial load
-  return user || isLoading ? <>{children}</> : null;
+  // If not authenticated, don't render anything
+  if (!user) {
+    return null;
+  }
+
+  // If authenticated, render the protected content
+  return <>{children}</>;
 }
