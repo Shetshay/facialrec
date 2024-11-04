@@ -275,8 +275,8 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 
 func (s *Server) uploadFileHandler(c *gin.Context) {
     // Get the session
-    userEmail := "voidspaceapp@gmail.com"
     session, err := auth.Store.Get(c.Request, auth.SessionName)
+
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session", "details": err.Error()})
         return
