@@ -51,6 +51,9 @@ func (s *Server) RegisterRoutes() *gin.Engine {
 
     r.GET("/api/listBucket", s.listBucket)
 
+    r.POST("/api/deleteFile", s.deleteFileHandler)
+
+
     return r
 }
 
@@ -258,11 +261,11 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
     }
 
     // Update user's bucket name in the database
-    err = s.db.UpdateUserBucketName(userEmail, bucketName)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating user bucket name", "details": err.Error()})
-        return
-    }
+    // err = s.db.UpdateUserBucketName(userEmail, bucketName)
+    // if err != nil {
+    //     c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating user bucket name", "details": err.Error()})
+    //     return
+    // } // Commented out to prevent database update
 
     // Redirect to homepage or desired page
     homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
@@ -614,4 +617,45 @@ func (s *Server) listBucket(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{
         "files": objects,
     })
+}
+
+
+func (s *Server) deleteFileHandler(c *gin.Context) {
+    // Get the session
+    session, err := auth.Store.Get(c.Request, auth.SessionName)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+        return
+    }
+
+    userEmail, ok := session.Values["user_email"].(string)
+    if !ok || userEmail == "" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
+        return
+    }
+
+    // Get file name from request body
+    var req struct {
+        FileName string `json:"fileName"`
+    }
+    if err := c.BindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
+        return
+    }
+
+    // Get the user's bucket name from the database
+    bucketName, err := s.db.GetBucketNameByEmail(userEmail)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving bucket name", "details": err.Error()})
+        return
+    }
+
+    // Delete the object from MinIO
+    err = s.minioClient.RemoveObject(context.Background(), bucketName, req.FileName, minio.RemoveObjectOptions{})
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file", "details": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "File deleted successfully"})
 }

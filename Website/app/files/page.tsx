@@ -6,9 +6,7 @@ import { FaTimes } from "react-icons/fa";
 import Image from "next/image";
 
 export default function FilesPage() {
-  const [files, setFiles] = useState<
-    { name: string; lastModified: number; size: number }[]
-  >([]);
+  const [files, setFiles] = useState<File[]>([]); // Initialize files as an empty array with type File
   const [editMode, setEditMode] = useState(false);
 
   useEffect(() => {
@@ -21,14 +19,17 @@ export default function FilesPage() {
         });
         if (response.ok) {
           const data = await response.json();
-          // Assuming the response is { files: [...] }
-          setFiles(data.files);
+          // Ensure data.files is an array
+          const filesArray = Array.isArray(data.files) ? data.files : [];
+          setFiles(filesArray);
         } else {
           // Handle errors, e.g., unauthorized
           console.error("Failed to fetch files:", response.statusText);
+          setFiles([]); // Set files to empty array on error
         }
       } catch (error) {
         console.error("Error fetching files:", error);
+        setFiles([]); // Set files to empty array on error
       }
     };
 
@@ -39,28 +40,20 @@ export default function FilesPage() {
     setEditMode((prev) => !prev);
   };
 
-  interface DeleteFileResponse {
-    ok: boolean;
-    statusText: string;
-  }
-
   const handleDeleteFile = async (fileName: string): Promise<void> => {
     const confirmed = window.confirm(
       `Are you sure you want to delete "${fileName}"?`
     );
     if (confirmed) {
       try {
-        const response: DeleteFileResponse = await fetch(
-          "http://localhost:3000/api/deleteFile",
-          {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ fileName }),
-          }
-        );
+        const response = await fetch("http://localhost:3000/api/deleteFile", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ fileName }),
+        });
         if (response.ok) {
           // Remove the file from the state
           setFiles((prevFiles) =>
@@ -74,12 +67,6 @@ export default function FilesPage() {
       }
     }
   };
-
-  interface File {
-    name: string;
-    lastModified: number;
-    size: number;
-  }
 
   const handleDownloadFile = (fileName: string): void => {
     // Implement the download logic here
@@ -106,63 +93,77 @@ export default function FilesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {files.map((file, index) => (
-          <div
-            key={index}
-            className="relative bg-white shadow-lg rounded-lg flex flex-col h-full"
-          >
-            {/* Image Placeholder */}
-            <div className="h-48 bg-gray-200 flex justify-center items-center">
-              <Image
-                src="/placeholder.png"
-                alt="File Preview"
-                className="object-cover w-full h-full"
-                width={500}
-                height={500}
-              />
-            </div>
+      {files.length === 0 ? (
+        <div className="text-center mt-8">
+          <h2 className="text-xl text-gray-600">
+            You haven't uploaded anything yet.
+          </h2>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {files.map((file, index) => (
+            <div
+              key={index}
+              className="relative bg-white shadow-lg rounded-lg flex flex-col h-full"
+            >
+              {/* Image Placeholder */}
+              <div className="h-48 bg-gray-200 flex justify-center items-center">
+                <Image
+                  src="/placeholder.png"
+                  alt="File Preview"
+                  className="object-cover w-full h-full"
+                  width={500}
+                  height={500}
+                />
+              </div>
 
-            {/* File Information */}
-            <div className="p-4 flex-grow">
-              <h3 className="text-lg font-bold text-gray-800">{file.name}</h3>
-              <p className="text-sm text-gray-600">
-                Last Modified: {new Date(file.lastModified).toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600">
-                Size: {formatFileSize(file.size)}
-              </p>
-            </div>
+              {/* File Information */}
+              <div className="p-4 flex-grow">
+                <h3 className="text-lg font-bold text-gray-800">{file.name}</h3>
+                <p className="text-sm text-gray-600">
+                  Last Modified: {new Date(file.lastModified).toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Size: {formatFileSize(file.size)}
+                </p>
+              </div>
 
-            {/* X Icon in Edit Mode */}
-            {editMode && (
-              <div className="absolute top-2 left-2">
+              {/* X Icon in Edit Mode */}
+              {editMode && (
+                <div className="absolute top-2 left-2">
+                  <button
+                    onClick={() => handleDeleteFile(file.name)}
+                    className="bg-white border-2 border-gray-800 rounded-full p-1"
+                  >
+                    <FaTimes className="text-gray-800" />
+                  </button>
+                </div>
+              )}
+
+              {/* Download Button */}
+              <div className="bg-gray-100 p-4">
                 <button
-                  onClick={() => handleDeleteFile(file.name)}
-                  className="bg-white border-2 border-gray-800 rounded-full p-1"
+                  onClick={() => handleDownloadFile(file.name)}
+                  className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                 >
-                  <FaTimes className="text-gray-800" />
+                  Download
                 </button>
               </div>
-            )}
-
-            {/* Download Button */}
-            <div className="bg-gray-100 p-4">
-              <button
-                onClick={() => handleDownloadFile(file.name)}
-                className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-              >
-                Download
-              </button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Layout>
   );
 }
 
 // Helper function to format file size
+interface File {
+  name: string;
+  lastModified: string;
+  size: number;
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return bytes + " B";
   let kb = bytes / 1024;
