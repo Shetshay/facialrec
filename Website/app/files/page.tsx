@@ -6,35 +6,35 @@ import { FaTimes } from "react-icons/fa";
 import Image from "next/image";
 
 export default function FilesPage() {
-  const [files, setFiles] = useState<File[]>([]); // Initialize files as an empty array with type File
+  const [files, setFiles] = useState<File[]>([]);
   const [editMode, setEditMode] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
 
   useEffect(() => {
-    // Fetch the list of files from the backend API
-    const fetchFiles = async () => {
-      try {
-        const response = await fetch("http://localhost:3000/api/listBucket", {
-          method: "GET",
-          credentials: "include", // Include cookies in the request
-        });
-        if (response.ok) {
-          const data = await response.json();
-          // Ensure data.files is an array
-          const filesArray = Array.isArray(data.files) ? data.files : [];
-          setFiles(filesArray);
-        } else {
-          // Handle errors, e.g., unauthorized
-          console.error("Failed to fetch files:", response.statusText);
-          setFiles([]); // Set files to empty array on error
-        }
-      } catch (error) {
-        console.error("Error fetching files:", error);
-        setFiles([]); // Set files to empty array on error
-      }
-    };
-
     fetchFiles();
   }, []);
+
+  const fetchFiles = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/api/listBucket", {
+        method: "GET",
+        credentials: "include", // Include cookies in the request
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Ensure data.files is an array
+        const filesArray = Array.isArray(data.files) ? data.files : [];
+        setFiles(filesArray);
+      } else {
+        console.error("Failed to fetch files:", response.statusText);
+        setFiles([]); // Set files to empty array on error
+      }
+    } catch (error) {
+      console.error("Error fetching files:", error);
+      setFiles([]); // Set files to empty array on error
+    }
+  };
 
   const toggleEditMode = () => {
     setEditMode((prev) => !prev);
@@ -69,11 +69,56 @@ export default function FilesPage() {
   };
 
   const handleDownloadFile = (fileName: string): void => {
-    // Implement the download logic here
     // Redirect the browser to the download URL
     window.location.href = `http://localhost:3000/api/downloadFile/${encodeURIComponent(
       fileName
     )}`;
+  };
+
+  const handleUploadClick = () => {
+    setShowUploadModal(true);
+  };
+
+  const handleUploadClose = () => {
+    setShowUploadModal(false);
+    setSelectedFiles(null);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedFiles(event.target.files);
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!selectedFiles || selectedFiles.length === 0) {
+      alert("Please select at least one file to upload.");
+      return;
+    }
+
+    const formData = new FormData();
+    // Append each selected file to the form data
+    Array.from(selectedFiles).forEach((file) => {
+      formData.append("files", file);
+    });
+
+    try {
+      const response = await fetch("http://localhost:3000/api/uploadFile", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Files uploaded successfully:", data.uploaded_files);
+        // Refresh the file list
+        fetchFiles();
+        // Close the modal
+        handleUploadClose();
+      } else {
+        console.error("Failed to upload files:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error uploading files:", error);
+    }
   };
 
   return (
@@ -87,7 +132,10 @@ export default function FilesPage() {
           >
             {editMode ? "Cancel" : "Edit"}
           </button>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+          <button
+            onClick={handleUploadClick}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
             Upload
           </button>
         </div>
@@ -151,6 +199,35 @@ export default function FilesPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Upload Files</h2>
+            <input
+              type="file"
+              multiple
+              onChange={handleFileChange}
+              className="mb-4"
+            />
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={handleUploadClose}
+                className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUploadSubmit}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                Upload
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </Layout>

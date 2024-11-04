@@ -58,6 +58,18 @@ func (s *Server) RegisterRoutes() *gin.Engine {
     return r
 }
 
+func (s *Server) getBucketNameByEmail(userEmail string) (string, error) {
+    // Retrieve internal user ID from the database
+    internalUserID, err := s.db.GetUserIDByEmail(userEmail)
+    if err != nil {
+        return "", fmt.Errorf("Error retrieving user ID: %v", err)
+    }
+    // Generate bucket name
+    bucketName := fmt.Sprintf("user-%d", internalUserID)
+    return bucketName, nil
+}
+
+
 func (s *Server) HelloWorldHandler(c *gin.Context) {
     resp := make(map[string]string)
     resp["message"] = "Hello World"
@@ -280,7 +292,6 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 func (s *Server) uploadFileHandler(c *gin.Context) {
     // Get the session
     session, err := auth.Store.Get(c.Request, auth.SessionName)
-
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session", "details": err.Error()})
         return
@@ -293,10 +304,10 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
         return
     }
 
-    // Get the user's bucket name from the database
-    bucketName, err := s.db.GetBucketNameByEmail(userEmail)
+    // Get bucket name
+    bucketName, err := s.getBucketNameByEmail(userEmail)
     if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving bucket name", "details": err.Error()})
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name", "details": err.Error()})
         return
     }
 
@@ -307,8 +318,8 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
     }
 
     form := c.Request.MultipartForm
-    files := form.File["files[]"] // Use files[] as the form field name for multiple files
-    basePath := c.Request.FormValue("path") // Get the base path from the form
+    files := form.File["files"] // Use "files" as the form field name
+    // If you use "files[]" as the field name, adjust accordingly
 
     uploadedFiles := make([]string, 0)
     failedFiles := make([]string, 0)
@@ -321,23 +332,19 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
         }
         defer file.Close()
 
-        // Construct the object name preserving folder structure
-        objectName := fileHeader.Filename
-        if basePath != "" {
-            objectName = filepath.Join(basePath, objectName)
-        }
-
-        // Clean the path to prevent directory traversal
-        objectName = filepath.Clean(objectName)
-        // Convert Windows-style paths to forward slashes for MinIO
-        objectName = filepath.ToSlash(objectName)
-
         // Read the file content
         fileBytes, err := io.ReadAll(file)
         if err != nil {
             failedFiles = append(failedFiles, fileHeader.Filename)
             continue
         }
+
+        // Construct the object name
+        objectName := fileHeader.Filename
+        // Clean the path to prevent directory traversal
+        objectName = filepath.Clean(objectName)
+        // Convert Windows-style paths to forward slashes for MinIO
+        objectName = filepath.ToSlash(objectName)
 
         // Upload the file to MinIO
         reader := bytes.NewReader(fileBytes)
@@ -376,6 +383,7 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
 
     c.JSON(http.StatusOK, response)
 }
+
 
 
 func (s *Server) authHandler(c *gin.Context) {
@@ -677,3 +685,4 @@ func (s *Server) deleteFileHandler(c *gin.Context) {
 
     c.JSON(http.StatusOK, gin.H{"message": "File deleted successfully"})
 }
+
