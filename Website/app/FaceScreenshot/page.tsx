@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../Context/AuthContext';
 import FaceScreenshot from './FaceScreenshot';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 export default function FaceScreenshotPage() {
   const { user, isLoading } = useAuth();
@@ -14,5 +15,9 @@ export default function FaceScreenshotPage() {
     }
   }, [isLoading, user, initialized]);
 
-  return <FaceScreenshot />;
+  return (
+    <ProtectedRoute>
+      <FaceScreenshot />
+    </ProtectedRoute>
+  );
 }
