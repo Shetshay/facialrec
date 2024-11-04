@@ -97,34 +97,35 @@ const FaceScreenshot = () => {
 
   return (
     <ProtectedRoute>
-      <div className={darkMode ? styles.darkMode : ''}>
-        <header>
-          <h1>Camera Feed Test</h1>
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <h1>Camera Feed</h1>
           {user && <p>Welcome, {user.firstName}!</p>}
         </header>
-        <div className={styles.instructionMessage}>
-          Press the spacebar to take a picture or click the 'Take Snapshot' button.
-        </div>
+        
         {loading && (
           <div className={styles.loadingMessage}>
             Analyzing the image, please wait...
           </div>
         )}
-        <div className={styles.videoContainer}>
-          <video ref={videoRef} width="640" height="480" autoPlay />
-          <img ref={analysisImageRef} width="640" height="480" style={{ display: 'none' }} />
+        
+        <div className={styles.videoSection}>
+          <div className={styles.videoContainer}>
+            <video ref={videoRef} width="640" height="480" autoPlay />
+            <img ref={analysisImageRef} width="640" height="480" style={{ display: 'none' }} />
+          </div>
+          <div className={styles.buttonContainer}>
+            <button onClick={takeSnapshot}>Take Snapshot</button>
+            <button
+              onClick={() => {
+                window.location.href = process.env.NEXT_PUBLIC_LOGOUT_URL || 'http://localhost:3000/api/logout/google';
+              }}
+            >
+              Logout
+            </button>
+          </div>
         </div>
-        <div className={styles.buttonContainer}>
-          <button onClick={takeSnapshot}>Take Snapshot</button>
-          <button
-            onClick={() => {
-              window.location.href = process.env.NEXT_PUBLIC_LOGOUT_URL || 'http://localhost:3000/api/logout/google';
-            }}
-            className="ml-4"
-          >
-            Logout
-          </button>
-        </div>
+        
         <div className={styles.message}>
           {snapshotMessage && <p>{snapshotMessage}</p>}
         </div>
