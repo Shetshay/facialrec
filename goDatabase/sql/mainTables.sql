@@ -1,5 +1,3 @@
--- Dropping all tables when running mainTables.sql
--- If don't want to drop and remove tables, DONT RUN THIS
 
 drop table if exists userInfo cascade;
 
@@ -51,10 +49,8 @@ drop table if exists faceAuthentication cascade;
 CREATE TABLE faceAuthentication (
     faceID SERIAL NOT NULL PRIMARY KEY,
     featureVector DOUBLE PRECISION[] NOT NULL,
-    vectorFormat VARCHAR(50) NOT NULL,
     regDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     lastUsed TIMESTAMP NOT NULL,
-    authToken VARCHAR(255),
     userID INT NOT NULL,
     FOREIGN KEY (userID) REFERENCES userInfo(userID) ON DELETE CASCADE
 );

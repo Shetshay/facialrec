@@ -4,4 +4,7 @@ opencv-python
 mediapipe
 numpy
 scikit-learn
-
+watchdog
+aiohttp
+psycopg2
+python-dotenv

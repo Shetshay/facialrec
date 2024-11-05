@@ -25,9 +25,6 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 
 RUN go version
 
-COPY pythonFacialRec/requirements.txt /backend
-RUN pip3 install --no-cache-dir -r requirements.txt
-
 COPY . .
 
 RUN go install github.com/air-verse/air@latest
