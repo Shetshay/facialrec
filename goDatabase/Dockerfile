@@ -15,18 +15,15 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN wget https://go.dev/dl/go1.23.1.linux-arm64.tar.gz && \
-    tar -C /usr/local -xzf go1.23.1.linux-arm64.tar.gz && \
-    rm go1.23.1.linux-arm64.tar.gz
+RUN wget https://go.dev/dl/go1.23.1.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.23.1.linux-amd64.tar.gz && \
+    rm go1.23.1.linux-amd64.tar.gz
 
 
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 
 RUN go version
-
-COPY pythonFacialRec/requirements.txt /backend
-RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 

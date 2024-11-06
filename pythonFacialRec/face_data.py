@@ -83,6 +83,9 @@ def main():
         origin_encoding = get_face_encoding(origin_image_path)
         logout_encoding = get_face_encoding(logout_image_path)
 
+        print(origin_encoding)
+        print(logout_encoding)
+
         # Compare the faces using multiple methods
         distance, pcc, cosine_sim = compare_faces(origin_encoding, logout_encoding)
 
@@ -112,8 +115,6 @@ def main():
             file1.write(f"Landmark positions for '{origin_image_path}':\n{formatted_origin_encoding}\n")
             file2.write(f"Landmark positions for '{logout_image_path}':\n{formatted_logout_encoding}\n")
 
-            print(origin_encoding)
-            print(logout_encoding)
 
     except ValueError as e:
         logging.error(e)

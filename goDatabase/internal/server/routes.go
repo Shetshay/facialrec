@@ -208,18 +208,7 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
     userEmail := user.Email
 
 
-    // Save user info in session
-    session.Values["user_email"] = user.Email
-    session.Values["user_accesstoken"] = user.AccessToken
-    session.Values["user_idtoken"] = user.IDToken
-    session.Values["user_id"] = user.UserID
-    session.Values["user_fName"] = user.FirstName
-    session.Values["user_lName"] = user.LastName
 
-    if err := session.Save(c.Request, c.Writer); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session", "details": err.Error()})
-        return
-    }
 
     // Check if user exists in the database
     exists, err := s.db.IsUserInDatabase(userEmail)
@@ -254,8 +243,28 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
         fmt.Println("User added to the database.")
     }
 
+    // Save user info in session
+    // Changed this to have user Database id for easier way to handle
+    // fetching cookie information
+    session.Values["user_email"] = user.Email
+    session.Values["user_accesstoken"] = user.AccessToken
+    session.Values["user_idtoken"] = user.IDToken
+    session.Values["user_id"] = user.UserID
+    session.Values["user_fName"] = user.FirstName
+    session.Values["user_lName"] = user.LastName
+    session.Values["user_database_id"] = internalUserID
+
+    fmt.Println(internalUserID)
+
     // Generate bucket name
     bucketName := fmt.Sprintf("user-%d", internalUserID)
+
+
+    if err := session.Save(c.Request, c.Writer); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session", "details": err.Error()})
+        return
+    }
+
 
     // Check if the bucket exists
     minioCtx := context.Background()
@@ -423,12 +432,14 @@ func (s *Server) userCookieInfo(c *gin.Context) {
     userEmail, ok := session.Values["user_email"].(string)
     userfName := session.Values["user_fName"].(string)
     userlName := session.Values["user_lName"].(string)
+    userID := session.Values["user_database_id"]
+
     if !ok {
         c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
         return
     }
 
-    c.JSON(http.StatusOK, gin.H{"email": userEmail, "firstName": userfName, "lastName": userlName})
+    c.JSON(http.StatusOK, gin.H{"email": userEmail, "firstName": userfName, "lastName": userlName, "userID": userID})
 }
 
 // Note: Adjusted the uploadHandler to comply with the updates

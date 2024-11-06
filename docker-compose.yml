@@ -59,6 +59,19 @@ services:
     networks:
       - app-network
 
+  pythonserver:
+    image: pythonserver:latest
+    build:
+      context: ./pythonFacialRec
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./pythonFacialRec:/pythonserver
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
 volumes:
   psql_volume:
   minio_data:

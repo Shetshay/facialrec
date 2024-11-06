@@ -4,6 +4,7 @@
 main
 *.exe
 *.out
+main
 
 #IGNORING THE .JPG AND .TXT IN GODATABASE FOLDER
 goDatabase/*.txt
