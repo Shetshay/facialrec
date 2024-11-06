@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -593,12 +594,14 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
 }
 
 func (s *Server) listBucket(c *gin.Context) {
+    // Get the session
     session, err := auth.Store.Get(c.Request, auth.SessionName)
     if err != nil {
         c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
         return
     }
 
+    // Get userEmail from session
     userEmail, ok := session.Values["user_email"].(string)
     if !ok || userEmail == "" {
         c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
@@ -612,6 +615,7 @@ func (s *Server) listBucket(c *gin.Context) {
         currentPath += "/"
     }
 
+    // Get bucket name
     bucketName, err := s.getBucketNameByEmail(userEmail)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name"})
@@ -620,6 +624,7 @@ func (s *Server) listBucket(c *gin.Context) {
 
     ctx := context.Background()
 
+    // Check if bucket exists
     exists, err := s.minioClient.BucketExists(ctx, bucketName)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -631,7 +636,7 @@ func (s *Server) listBucket(c *gin.Context) {
         return
     }
 
-    // List objects with the prefix
+    // List all objects with the prefix
     objectCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
         Prefix:    currentPath,
         Recursive: false,
@@ -642,7 +647,7 @@ func (s *Server) listBucket(c *gin.Context) {
 
     for object := range objectCh {
         if object.Err != nil {
-            log.Printf("Error: %v", object.Err)
+            log.Printf("Error listing object: %v", object.Err)
             continue
         }
 
@@ -664,9 +669,24 @@ func (s *Server) listBucket(c *gin.Context) {
                     "lastModified": object.LastModified,
                     "size":         0,
                     "type":         "folder",
+                    "contentType":  "folder",
                 })
             }
             continue
+        }
+
+        // Detect content type
+        contentType := "application/octet-stream"
+        ext := strings.ToLower(filepath.Ext(name))
+        if mimeType := mime.TypeByExtension(ext); mimeType != "" {
+            contentType = mimeType
+        }
+
+        // Create presigned URL for the object (valid for 1 hour)
+        url, err := s.minioClient.PresignedGetObject(ctx, bucketName, object.Key, time.Hour, nil)
+        var urlString string
+        if err == nil {
+            urlString = url.String()
         }
 
         // Regular file
@@ -675,15 +695,17 @@ func (s *Server) listBucket(c *gin.Context) {
             "lastModified": object.LastModified,
             "size":         object.Size,
             "type":         "file",
+            "contentType":  contentType,
+            "url":         urlString,
+            "path":        object.Key,
         })
     }
 
-    // Log the current state for debugging
-    log.Printf("Listing bucket %s with prefix '%s', found %d objects", 
-        bucketName, currentPath, len(objects))
+    log.Printf("Listed %d objects in bucket %s with prefix '%s'", 
+        len(objects), bucketName, currentPath)
 
     c.JSON(http.StatusOK, gin.H{
-        "files": objects,
+        "files":       objects,
         "currentPath": currentPath,
     })
 }
@@ -775,6 +797,7 @@ func (s *Server) deleteFileHandler(c *gin.Context) {
 
     c.JSON(http.StatusOK, gin.H{"message": "Deleted successfully"})
 }
+
 
 
 func (s *Server) createFolderHandler(c *gin.Context) {
