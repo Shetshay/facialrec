@@ -2,9 +2,16 @@
 
 import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
-import { FaTimes, FaFolder, FaFolderOpen, FaFile, FaArrowLeft } from "react-icons/fa";import Image from "next/image";
-import { useAuth } from '../Context/AuthContext';
-import ProtectedRoute from '../components/ProtectedRoute';
+import {
+  FaTimes,
+  FaFolder,
+  FaFolderOpen,
+  FaFile,
+  FaArrowLeft,
+} from "react-icons/fa";
+import Image from "next/image";
+import { useAuth } from "../Context/AuthContext";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function FilesPage() {
   const [files, setFiles] = useState<File[]>([]);
@@ -13,27 +20,49 @@ export default function FilesPage() {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [initialized, setInitialized] = useState(false);
   const { user, isLoading } = useAuth();
-  const [currentPath, setCurrentPath] = useState<string>('');
+  const [currentPath, setCurrentPath] = useState<string>("");
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderName, setNewFolderName] = useState("");
 
-
+  // Modify your useEffect
   useEffect(() => {
-    if (!isLoading && !initialized) {
-      setInitialized(true);
-      console.log('Files Page mounted - User:', user);
+    const initializePage = async () => {
+      if (!isLoading && !initialized) {
+        setInitialized(true);
+        console.log("Files Page mounted - User:", user);
+        await fetchFiles(); // Make sure to await this
+      }
+    };
+    initializePage();
+  }, [isLoading]);
+
+  // Separate useEffect for path changes
+  useEffect(() => {
+    if (initialized && !isLoading) {
+      console.log("Path changed to:", currentPath);
       fetchFiles();
     }
-  }, [isLoading, initialized]);
+  }, [currentPath, initialized]);
 
+  // Update the fetchFiles function to handle empty paths
   const fetchFiles = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/listBucket?path=${encodeURIComponent(currentPath)}`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const queryPath = currentPath
+        ? `?path=${encodeURIComponent(currentPath)}`
+        : "";
+      console.log("Fetching files with path:", queryPath);
+
+      const response = await fetch(
+        `http://localhost:3000/api/listBucket${queryPath}`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
       if (response.ok) {
         const data = await response.json();
+        console.log("Received files:", data);
         const filesArray = Array.isArray(data.files) ? data.files : [];
         setFiles(filesArray);
       } else {
@@ -45,7 +74,6 @@ export default function FilesPage() {
       setFiles([]);
     }
   };
-
   const toggleEditMode = () => {
     setEditMode((prev) => !prev);
   };
@@ -107,6 +135,9 @@ export default function FilesPage() {
       formData.append("files", file);
     });
 
+    // Add the current path to the form data
+    formData.append("path", currentPath);
+
     try {
       const response = await fetch("http://localhost:3000/api/uploadFile", {
         method: "POST",
@@ -116,7 +147,7 @@ export default function FilesPage() {
       if (response.ok) {
         const data = await response.json();
         console.log("Files uploaded successfully:", data.uploaded_files);
-        fetchFiles();
+        await fetchFiles(); // Make sure to await the fetch
         handleUploadClose();
       } else {
         console.error("Failed to upload files:", response.statusText);
@@ -127,23 +158,88 @@ export default function FilesPage() {
   };
 
   //newest  handlers for folders
-  const handleNavigateToFolder = (folderPath: string) => {
-    setCurrentPath(folderPath);
-    fetchFiles();
-  };
-  
-  const handleNavigateBack = () => {
-    const newPath = currentPath.split('/').slice(0, -1).join('/');
+  const handleNavigateToFolder = async (folderPath: string) => {
+    // Don't append to current path, just use the folder name
+    console.log("Current path before:", currentPath);
+    const newPath = currentPath ? `${currentPath}/${folderPath}` : folderPath;
+    console.log("Navigating to:", newPath);
     setCurrentPath(newPath);
-    fetchFiles();
   };
-  
+  const handleDeleteItem = async (name: string, type: "file" | "folder") => {
+    // Construct the full path
+    const fullPath = currentPath ? `${currentPath}/${name}` : name;
+    console.log("Deleting item:", { fullPath, type });
+
+    try {
+      // First attempt to delete and check for confirmation requirement
+      const response = await fetch("http://localhost:3000/api/deleteFile", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          path: fullPath,
+          type: type,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.needsConfirmation) {
+        const confirmed = window.confirm(
+          `This folder contains ${data.count} item(s). Are you sure you want to delete the folder and all its contents?`
+        );
+
+        if (!confirmed) {
+          return;
+        }
+
+        // Send confirmed delete request
+        const deleteResponse = await fetch(
+          "http://localhost:3000/api/deleteFile?confirmed=true",
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              path: fullPath,
+              type: type,
+            }),
+          }
+        );
+
+        if (!deleteResponse.ok) {
+          throw new Error("Failed to delete folder");
+        }
+      }
+
+      // Refresh the file list
+      await fetchFiles();
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      alert("Failed to delete item. Please try again.");
+    }
+  };
+
+  // Update handleNavigateBack
+  const handleNavigateBack = async () => {
+    console.log("Current path before back:", currentPath);
+    const pathParts = currentPath.split("/").filter(Boolean);
+    pathParts.pop();
+    const newPath = pathParts.join("/");
+    console.log("Navigating back to:", newPath);
+    setCurrentPath(newPath);
+  };
+
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) {
       alert("Please enter a folder name");
       return;
     }
-  
+
     try {
       const response = await fetch("http://localhost:3000/api/createFolder", {
         method: "POST",
@@ -156,11 +252,11 @@ export default function FilesPage() {
           path: currentPath,
         }),
       });
-  
+
       if (response.ok) {
         await fetchFiles();
         setShowNewFolderModal(false);
-        setNewFolderName('');
+        setNewFolderName("");
       } else {
         console.error("Failed to create folder");
       }
@@ -169,17 +265,14 @@ export default function FilesPage() {
     }
   };
 
-
-return (
+  return (
     <ProtectedRoute>
       <Layout>
         <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Files</h1>
-          {user && (
-            <p className="userName">Welcome, {user.firstName}!</p>
-          )}
-        </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Files</h1>
+            {user && <p className="userName">Welcome, {user.firstName}!</p>}
+          </div>
           <div className="space-x-4">
             <button
               onClick={() => setShowNewFolderModal(true)}
@@ -217,9 +310,7 @@ return (
 
         {files.length === 0 ? (
           <div className="text-center mt-8">
-            <h2 className="text-xl text-gray-600">
-              This folder is empty
-            </h2>
+            <h2 className="text-xl text-gray-600">This folder is empty</h2>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -227,10 +318,13 @@ return (
               <div
                 key={index}
                 className="relative bg-white shadow-lg rounded-lg flex flex-col h-full cursor-pointer"
-                onClick={() => file.type === 'folder' && handleNavigateToFolder(`${currentPath}/${file.name}`)}
+                onClick={() =>
+                  file.type === "folder" &&
+                  handleNavigateToFolder(`${currentPath}/${file.name}`)
+                }
               >
                 <div className="h-48 bg-gray-200 flex justify-center items-center">
-                  {file.type === 'folder' ? (
+                  {file.type === "folder" ? (
                     <FaFolder className="w-24 h-24 text-blue-400" />
                   ) : (
                     <Image
@@ -242,27 +336,30 @@ return (
                     />
                   )}
                 </div>
-
                 <div className="p-4 flex-grow bg-white">
-                <h3 className="text-xl font-bold text-black mb-2 text-center">
-                  {file.name}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Last Modified: {new Date(file.lastModified).toLocaleString()}
-                </p>
-                {file.type !== 'folder' && (
+                  <h3 className="text-xl font-bold text-black mb-2 text-center">
+                    {file.name}
+                  </h3>
                   <p className="text-sm text-gray-600">
-                    Size: {formatFileSize(file.size)}
+                    Last Modified:{" "}
+                    {new Date(file.lastModified).toLocaleString()}
                   </p>
-                )}
-              </div>
-
+                  {file.type !== "folder" && (
+                    <p className="text-sm text-gray-600">
+                      Size: {formatFileSize(file.size)}
+                    </p>
+                  )}
+                </div>
+                // Update your delete button in the JSX
                 {editMode && (
                   <div className="absolute top-2 left-2">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteFile(file.name);
+                        handleDeleteItem(
+                          file.name,
+                          file.type as "file" | "folder"
+                        );
                       }}
                       className="bg-white border-2 border-gray-800 rounded-full p-1"
                     >
@@ -270,8 +367,7 @@ return (
                     </button>
                   </div>
                 )}
-
-                {file.type !== 'folder' && (
+                {file.type !== "folder" && (
                   <div className="bg-gray-100 p-4">
                     <button
                       onClick={(e) => {
@@ -289,39 +385,39 @@ return (
           </div>
         )}
 
-       {/* New Folder Modal */}
-{showNewFolderModal && (
-  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <h2 className="text-xl font-bold mb-4">Create New Folder</h2>
-      <input
-        type="text"
-        value={newFolderName}
-        onChange={(e) => setNewFolderName(e.target.value)}
-        placeholder="Folder name"
-        className="folderModalInput"
-        autoFocus
-      />
-      <div className="flex justify-end space-x-4">
-        <button
-          onClick={() => {
-            setShowNewFolderModal(false);
-            setNewFolderName('');
-          }}
-          className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleCreateFolder}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-        >
-          Create
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        {/* New Folder Modal */}
+        {showNewFolderModal && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Create New Folder</h2>
+              <input
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Folder name"
+                className="folderModalInput"
+                autoFocus
+              />
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => {
+                    setShowNewFolderModal(false);
+                    setNewFolderName("");
+                  }}
+                  className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateFolder}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Upload Modal */}
         {showUploadModal && (
@@ -360,8 +456,8 @@ interface File {
   name: string;
   lastModified: string;
   size: number;
-  type: 'file' | 'folder';  
-  path: string;            
+  type: "file" | "folder";
+  path: string;
 }
 
 function formatFileSize(bytes: number): string {

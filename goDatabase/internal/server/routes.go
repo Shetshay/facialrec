@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"goDatabase/internal/auth"
@@ -53,6 +54,8 @@ func (s *Server) RegisterRoutes() *gin.Engine {
     r.GET("/api/listBucket", s.listBucket)
 
     r.POST("/api/deleteFile", s.deleteFileHandler)
+
+    r.POST("/api/createFolder", s.createFolderHandler)
 
 
     return r
@@ -317,9 +320,15 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
         return
     }
 
+    // Get the current path from form
+    currentPath := c.Request.FormValue("path")
+    currentPath = strings.Trim(currentPath, "/")
+    if currentPath != "" {
+        currentPath += "/"
+    }
+
     form := c.Request.MultipartForm
-    files := form.File["files"] // Use "files" as the form field name
-    // If you use "files[]" as the field name, adjust accordingly
+    files := form.File["files"]
 
     uploadedFiles := make([]string, 0)
     failedFiles := make([]string, 0)
@@ -332,18 +341,15 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
         }
         defer file.Close()
 
-        // Read the file content
         fileBytes, err := io.ReadAll(file)
         if err != nil {
             failedFiles = append(failedFiles, fileHeader.Filename)
             continue
         }
 
-        // Construct the object name
-        objectName := fileHeader.Filename
-        // Clean the path to prevent directory traversal
-        objectName = filepath.Clean(objectName)
-        // Convert Windows-style paths to forward slashes for MinIO
+        // Construct the object name with the current path
+        objectName := filepath.Join(currentPath, fileHeader.Filename)
+        // Convert to forward slashes for MinIO
         objectName = filepath.ToSlash(objectName)
 
         // Upload the file to MinIO
@@ -364,13 +370,14 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
         )
 
         if err != nil {
+            log.Printf("Failed to upload file %s: %v", objectName, err)
             failedFiles = append(failedFiles, fileHeader.Filename)
         } else {
+            log.Printf("Successfully uploaded file: %s", objectName)
             uploadedFiles = append(uploadedFiles, objectName)
         }
     }
 
-    // Prepare response
     response := gin.H{
         "uploaded_files": uploadedFiles,
         "total_uploaded": len(uploadedFiles),
@@ -586,6 +593,191 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
 }
 
 func (s *Server) listBucket(c *gin.Context) {
+    session, err := auth.Store.Get(c.Request, auth.SessionName)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+        return
+    }
+
+    userEmail, ok := session.Values["user_email"].(string)
+    if !ok || userEmail == "" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
+        return
+    }
+
+    // Get and clean the path
+    currentPath := strings.TrimSpace(c.Query("path"))
+    currentPath = strings.Trim(currentPath, "/")
+    if currentPath != "" {
+        currentPath += "/"
+    }
+
+    bucketName, err := s.getBucketNameByEmail(userEmail)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name"})
+        return
+    }
+
+    ctx := context.Background()
+
+    exists, err := s.minioClient.BucketExists(ctx, bucketName)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    if !exists {
+        c.JSON(http.StatusNotFound, gin.H{"error": "Bucket does not exist"})
+        return
+    }
+
+    // List objects with the prefix
+    objectCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
+        Prefix:    currentPath,
+        Recursive: false,
+    })
+
+    var objects []map[string]interface{}
+    seenFolders := make(map[string]bool)
+
+    for object := range objectCh {
+        if object.Err != nil {
+            log.Printf("Error: %v", object.Err)
+            continue
+        }
+
+        // Get relative name by removing the current path prefix
+        name := strings.TrimPrefix(object.Key, currentPath)
+        
+        // Skip empty names and the current directory marker
+        if name == "" || object.Key == currentPath {
+            continue
+        }
+
+        // Handle folders (objects with trailing slash or containing slash)
+        if strings.Contains(name, "/") {
+            folderName := strings.Split(name, "/")[0]
+            if !seenFolders[folderName] {
+                seenFolders[folderName] = true
+                objects = append(objects, map[string]interface{}{
+                    "name":         folderName,
+                    "lastModified": object.LastModified,
+                    "size":         0,
+                    "type":         "folder",
+                })
+            }
+            continue
+        }
+
+        // Regular file
+        objects = append(objects, map[string]interface{}{
+            "name":         name,
+            "lastModified": object.LastModified,
+            "size":         object.Size,
+            "type":         "file",
+        })
+    }
+
+    // Log the current state for debugging
+    log.Printf("Listing bucket %s with prefix '%s', found %d objects", 
+        bucketName, currentPath, len(objects))
+
+    c.JSON(http.StatusOK, gin.H{
+        "files": objects,
+        "currentPath": currentPath,
+    })
+}
+
+func (s *Server) deleteFileHandler(c *gin.Context) {
+    // Get session
+    session, err := auth.Store.Get(c.Request, auth.SessionName)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+        return
+    }
+
+    userEmail, ok := session.Values["user_email"].(string)
+    if !ok || userEmail == "" {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
+        return
+    }
+
+    // Get request body
+    var req struct {
+        Path string `json:"path"` // Full path including filename or folder name
+        Type string `json:"type"` // "file" or "folder"
+    }
+    if err := c.BindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+        return
+    }
+
+    // Get bucket name
+    bucketName, err := s.getBucketNameByEmail(userEmail)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name"})
+        return
+    }
+
+    ctx := context.Background()
+
+    if req.Type == "folder" {
+        // List all objects in the folder to count them
+        objectsCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
+            Prefix:    req.Path + "/",
+            Recursive: true,
+        })
+
+        var objects []string
+        for object := range objectsCh {
+            if object.Err != nil {
+                log.Printf("Error listing objects: %v", object.Err)
+                continue
+            }
+            objects = append(objects, object.Key)
+        }
+
+        // If not already confirmed and folder has contents, return count
+        if c.Query("confirmed") != "true" && len(objects) > 0 {
+            c.JSON(http.StatusOK, gin.H{
+                "hasContents": true,
+                "count":      len(objects),
+                "needsConfirmation": true,
+            })
+            return
+        }
+
+        // Delete all objects
+        for _, objectKey := range objects {
+            err := s.minioClient.RemoveObject(ctx, bucketName, objectKey, minio.RemoveObjectOptions{})
+            if err != nil {
+                log.Printf("Error deleting object %s: %v", objectKey, err)
+            }
+        }
+
+        // Also delete the folder marker if it exists
+        folderMarker := strings.TrimSuffix(req.Path, "/") + "/"
+        err = s.minioClient.RemoveObject(ctx, bucketName, folderMarker, minio.RemoveObjectOptions{})
+        if err != nil {
+            log.Printf("Error deleting folder marker: %v", err)
+        }
+
+    } else {
+        // Single file deletion
+        err = s.minioClient.RemoveObject(ctx, bucketName, req.Path, minio.RemoveObjectOptions{})
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{
+                "error": fmt.Sprintf("Failed to delete file: %v", err),
+            })
+            return
+        }
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "Deleted successfully"})
+}
+
+
+func (s *Server) createFolderHandler(c *gin.Context) {
     // Get the session
     session, err := auth.Store.Get(c.Request, auth.SessionName)
     if err != nil {
@@ -600,89 +792,52 @@ func (s *Server) listBucket(c *gin.Context) {
         return
     }
 
-    // Get the user's bucket name from the database
-    bucketName, err := s.db.GetBucketNameByEmail(userEmail)
+    // Parse request body
+    var req struct {
+        FolderName string `json:"folderName"`
+        Path       string `json:"path"`
+    }
+    if err := c.BindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+        return
+    }
+
+    // Get bucket name
+    bucketName, err := s.getBucketNameByEmail(userEmail)
     if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving bucket name", "details": err.Error()})
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name"})
         return
     }
 
-    // Proceed to list the bucket
-    ctx := context.Background()
+    // Construct the folder path
+    folderPath := req.FolderName
+    if req.Path != "" {
+        folderPath = filepath.Join(req.Path, req.FolderName)
+    }
+    // Ensure the path ends with a forward slash to indicate it's a folder
+    if !strings.HasSuffix(folderPath, "/") {
+        folderPath += "/"
+    }
+    
+    // Convert Windows-style paths to forward slashes
+    folderPath = filepath.ToSlash(folderPath)
 
-    // Ensure bucket exists
-    exists, err := s.minioClient.BucketExists(ctx, bucketName)
+    // Create an empty object with the folder name (this is how MinIO handles folders)
+    _, err = s.minioClient.PutObject(
+        context.Background(),
+        bucketName,
+        folderPath,
+        bytes.NewReader([]byte{}),
+        0,
+        minio.PutObjectOptions{ContentType: "application/x-directory"},
+    )
     if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create folder"})
         return
-    }
-
-    if !exists {
-        c.JSON(http.StatusNotFound, gin.H{"error": "Bucket does not exist"})
-        return
-    }
-
-    // List all objects
-    objectCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
-        Recursive: true,
-    })
-
-    var objects []map[string]interface{}
-    for object := range objectCh {
-        if object.Err != nil {
-            log.Printf("Error: %v", object.Err)
-            continue
-        }
-        objects = append(objects, map[string]interface{}{
-            "name":         object.Key,
-            "size":         object.Size,
-            "lastModified": object.LastModified,
-        })
     }
 
     c.JSON(http.StatusOK, gin.H{
-        "files": objects,
+        "message": "Folder created successfully",
+        "folderPath": folderPath,
     })
 }
-
-
-func (s *Server) deleteFileHandler(c *gin.Context) {
-    // Get the session
-    session, err := auth.Store.Get(c.Request, auth.SessionName)
-    if err != nil {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-        return
-    }
-
-    userEmail, ok := session.Values["user_email"].(string)
-    if !ok || userEmail == "" {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
-        return
-    }
-
-    // Get file name from request body
-    var req struct {
-        FileName string `json:"fileName"`
-    }
-    if err := c.BindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request", "details": err.Error()})
-        return
-    }
-
-    // Get the user's bucket name from the database
-    bucketName, err := s.db.GetBucketNameByEmail(userEmail)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving bucket name", "details": err.Error()})
-        return
-    }
-
-    // Delete the object from MinIO
-    err = s.minioClient.RemoveObject(context.Background(), bucketName, req.FileName, minio.RemoveObjectOptions{})
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file", "details": err.Error()})
-        return
-    }
-
-    c.JSON(http.StatusOK, gin.H{"message": "File deleted successfully"})
-}
-
