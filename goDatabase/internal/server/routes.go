@@ -27,7 +27,7 @@ func (s *Server) RegisterRoutes() *gin.Engine {
     r := gin.Default()
 
     r.Use(cors.New(cors.Config{
-        AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8000"}, // Add both domains
+        AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8000", "http://localhost:4269"}, // Add both domains
         AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
         AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
         ExposeHeaders:    []string{"Content-Length"},
@@ -686,7 +686,7 @@ func (s *Server) listBucket(c *gin.Context) {
         // Improved content type detection for files
         var contentType string
         ext := strings.ToLower(filepath.Ext(name))
-        
+
         // Map common extensions to MIME types
         switch ext {
         case ".jpg", ".jpeg":
@@ -881,7 +881,7 @@ func (s *Server) createFolderHandler(c *gin.Context) {
     if !strings.HasSuffix(folderPath, "/") {
         folderPath += "/"
     }
-    
+
     // Convert Windows-style paths to forward slashes
     folderPath = filepath.ToSlash(folderPath)
 

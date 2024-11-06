@@ -7,15 +7,44 @@ from PIL import Image
 import io
 import json
 from datetime import datetime
+import aiohttp_cors
+
 
 async def hello(request):
     return web.Response(text="Hello, World!")
 
 async def init_app():
     app = web.Application()
+
+    # Add routes
     app.router.add_get('/', hello)
     app.router.add_post('/faceData', firstFaceScan)
     app.router.add_post('/compareTwoFaces', compareTwoFaces)
+
+
+    # Add CORS support to all routes
+    cors = aiohttp_cors.setup(app, defaults={
+        "http://localhost:8000": aiohttp_cors.ResourceOptions(
+            allow_credentials=True,
+            expose_headers="*",
+            allow_headers="*",
+            allow_methods="*"
+        ),
+        "http://localhost:3000": aiohttp_cors.ResourceOptions(
+        allow_credentials=True,
+        expose_headers="*",
+        allow_headers="*",
+        allow_methods="*"
+        )
+    })
+
+
+
+    for route in list(app.router.routes()):
+        cors.add(route)
+
+#    app.add_routes(routes)
+
     return app
 
 async def cookieInfo(cookie):

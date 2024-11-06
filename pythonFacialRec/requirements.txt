@@ -8,3 +8,4 @@ watchdog
 aiohttp
 psycopg2
 python-dotenv
+aiohttp_cors
