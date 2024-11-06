@@ -64,7 +64,7 @@ services:
     build:
       context: ./pythonFacialRec
     ports:
-      - "5000:5000"
+      - "4269:4269"
     volumes:
       - ./pythonFacialRec:/pythonserver
     depends_on:

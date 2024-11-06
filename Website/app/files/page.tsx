@@ -277,6 +277,22 @@ export default function FilesPage() {
                     </p>
                   )}
                 </div>
+                {/* Add Download Button */}
+                {file.type !== "folder" && (
+                  <div className="p-4 bg-gray-50 border-t">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.location.href = `http://localhost:3000/api/downloadFile/${encodeURIComponent(
+                          file.path || file.name
+                        )}`;
+                      }}
+                      className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      Download
+                    </button>
+                  </div>
+                )}
 
                 {editMode && (
                   <div className="absolute top-2 right-2">

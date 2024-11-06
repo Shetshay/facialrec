@@ -192,5 +192,5 @@ async def compareTwoFaces(userID, facial_encoding_list):
 
 if __name__ == "__main__":
     app = asyncio.run(init_app())
-    web.run_app(app, host='0.0.0.0', port=5000)  # Change port as needed
+    web.run_app(app, host='0.0.0.0', port=4269)  # Change port as needed
 
