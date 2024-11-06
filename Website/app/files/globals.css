@@ -1,28 +1,98 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-:root {
-  --font-raleway: "Raleway", sans-serif;
-  --background: #ffffff;
-  --foreground: #171717;
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.header {
+  margin-bottom: 30px;
 }
 
-body {
-  font-family: var(--font-raleway); /* Ensure Raleway is applied */
-  color: var(--foreground);
-  background: var(--background);
+.header h1 {
+  color: #1a365d;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* Add this new style for the welcome message */
+.header p {
+  color: #2d3748;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.videoSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.videoContainer {
+  width: 100%;
+  max-width: 640px;
+  position: relative;
+}
+
+.buttonContainer {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.loadingMessage {
+  text-align: center;
+  color: #4299e1;
+  font-size: 1.25rem;
+  margin: 20px 0;
+}
+
+.message {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.successMessage {
+  color: #48bb78;
+  font-weight: 600;
+}
+
+/* Remove or comment out the old .folderName class */
+/* .folderName {
+  font-size: 1rem;
+  font-weight: 500;
+  ...
+} */
+/* Update folderName class */
+.folderName {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  color: #000000 !important; /* Changed to pure black for better visibility */
+  padding: 0.75rem !important;
+  background-color: #ffffff !important; /* Added solid white background */
+  border-bottom: 2px solid #e2e8f0 !important;
+  margin-bottom: 0.75rem !important;
+  text-align: center !important; /* Changed to center alignment */
+  word-break: break-word !important; /* Allow text to wrap */
+}
+
+/* Add specific styles for file cards */
+.fileCard {
+  background-color: white !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.fileCard h3 {
+  color: #000000 !important;
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  padding: 0.75rem !important;
+  margin: 0 !important;
+  background-color: rgb(62, 59, 59) !important;
+}
+
+/* Add hover effect */
+.fileCard:hover h3 {
+  color: #2b6cb0 !important; /* Blue color on hover */
 }
