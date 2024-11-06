@@ -662,15 +662,12 @@ func (s *Server) listBucket(c *gin.Context) {
             continue
         }
 
-        // Get relative name by removing the current path prefix
         name := strings.TrimPrefix(object.Key, currentPath)
-        
-        // Skip empty names and the current directory marker
         if name == "" || object.Key == currentPath {
             continue
         }
 
-        // Handle folders (objects with trailing slash or containing slash)
+        // Handle folders
         if strings.Contains(name, "/") {
             folderName := strings.Split(name, "/")[0]
             if !seenFolders[folderName] {
@@ -686,21 +683,54 @@ func (s *Server) listBucket(c *gin.Context) {
             continue
         }
 
-        // Detect content type
-        contentType := "application/octet-stream"
+        // Improved content type detection for files
+        var contentType string
         ext := strings.ToLower(filepath.Ext(name))
-        if mimeType := mime.TypeByExtension(ext); mimeType != "" {
-            contentType = mimeType
+        
+        // Map common extensions to MIME types
+        switch ext {
+        case ".jpg", ".jpeg":
+            contentType = "image/jpeg"
+        case ".png":
+            contentType = "image/png"
+        case ".gif":
+            contentType = "image/gif"
+        case ".pdf":
+            contentType = "application/pdf"
+        case ".doc", ".docx":
+            contentType = "application/msword"
+        case ".xls", ".xlsx":
+            contentType = "application/vnd.ms-excel"
+        case ".txt":
+            contentType = "text/plain"
+        case ".mp3":
+            contentType = "audio/mpeg"
+        case ".mp4":
+            contentType = "video/mp4"
+        case ".zip":
+            contentType = "application/zip"
+        default:
+            // Try to detect content type, fallback to octet-stream
+            if mimeType := mime.TypeByExtension(ext); mimeType != "" {
+                contentType = mimeType
+            } else {
+                contentType = "application/octet-stream"
+            }
         }
 
-        // Create presigned URL for the object (valid for 1 hour)
+        // Get object info to ensure we have content type
+        objInfo, err := s.minioClient.StatObject(ctx, bucketName, object.Key, minio.StatObjectOptions{})
+        if err == nil && objInfo.ContentType != "" {
+            contentType = objInfo.ContentType
+        }
+
+        // Create presigned URL for direct access
         url, err := s.minioClient.PresignedGetObject(ctx, bucketName, object.Key, time.Hour, nil)
         var urlString string
         if err == nil {
             urlString = url.String()
         }
 
-        // Regular file
         objects = append(objects, map[string]interface{}{
             "name":         name,
             "lastModified": object.LastModified,
@@ -710,10 +740,9 @@ func (s *Server) listBucket(c *gin.Context) {
             "url":         urlString,
             "path":        object.Key,
         })
-    }
 
-    log.Printf("Listed %d objects in bucket %s with prefix '%s'", 
-        len(objects), bucketName, currentPath)
+        log.Printf("Added file: %s with content type: %s", name, contentType)
+    }
 
     c.JSON(http.StatusOK, gin.H{
         "files":       objects,
