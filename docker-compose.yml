@@ -67,6 +67,8 @@ services:
       - "5000:5000"
     volumes:
       - ./pythonFacialRec:/pythonserver
+    depends_on:
+      - backend
     networks:
       - app-network
 

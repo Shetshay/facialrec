@@ -93,6 +93,38 @@ def getUserFacialData(userID):
         conn.close()
         print("Connection closed.")
 
+def checkIfUserHasFacialData(userID):
+    conn = connectDatabase()
+    if conn is None:
+        return
+
+    try:
+        cursor = conn.cursor()
+
+        select_query = sql.SQL("""
+            select featureVector from faceAuthentication where
+            userID = %s;
+        """)
+
+        cursor.execute(select_query, (userID,))
+
+        feature_vector = cursor.fetchone()
+
+        return feature_vector is not None
+
+    except Exception as e:
+        print("Error fetching user facial data:", e)
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        print("Connection closed.")
+
+
+
+
 
 
 
