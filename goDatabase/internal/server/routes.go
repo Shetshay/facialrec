@@ -274,11 +274,11 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
     }
 
     // Update user's bucket name in the database
-    // err = s.db.UpdateUserBucketName(userEmail, bucketName)
-    // if err != nil {
-    //     c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating user bucket name", "details": err.Error()})
-    //     return
-    // } // Commented out to prevent database update
+     err = s.db.UpdateUserBucketName(userEmail, bucketName)
+     if err != nil {
+         c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating user bucket name", "details": err.Error()})
+         return
+     } // Commented out to prevent database update
 
     // Redirect to homepage or desired page
     homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
