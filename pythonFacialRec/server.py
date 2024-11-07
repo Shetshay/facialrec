@@ -168,6 +168,10 @@ async def firstFaceScan(request):
             if not databaseFunctions.checkIfUserHasFacialData(userID):
                 print("THEY DONT GOT FACE")
                 databaseFunctions.insertFaceAuthentication(facial_encoding_list, last_used, userID)
+
+                # Since this is first login the boolean will be TRUE since they logged in
+                databaseFunctions.updateScanned(userID, True)
+
                 return web.json_response({
                     "message": "New user successfully created",
                     "redirect_url": "http://localhost:8000/files"
@@ -176,6 +180,10 @@ async def firstFaceScan(request):
                 print("THEY GOT FACE ALREADY")
                 faceRecResults = await compareTwoFaces(userID, facial_encoding_list)
                 if faceRecResults == True:
+                    #Since compareTwoFaces returns true they are same person
+                    #Boolean for updateScanned will be True
+                    databaseFunctions.updateScanned(userID, True)
+
                     return web.json_response({
                         "message": "Face Scan Successful!",
                         "redirect_url": "http://localhost:8000/files"

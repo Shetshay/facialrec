@@ -122,9 +122,33 @@ def checkIfUserHasFacialData(userID):
             conn.close()
         print("Connection closed.")
 
+def updateScanned(userID, boolean):
+    conn = connectDatabase()
+    if conn is None:
+        return
 
+    try:
+        cursor = conn.cursor()
 
+        update_query = sql.SQL("""
+            UPDATE userinfo
+            SET faceScanned = %s
+            where userID = %s;
+        """)
 
+        cursor.execute(update_query, (boolean, userID))
 
+        conn.commit()
+
+    except Exception as e:
+        print("Error fetching user facial data:", e)
+        return False
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        print("Connection closed.")
+    return True
 
 

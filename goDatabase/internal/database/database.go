@@ -28,6 +28,7 @@ type Service interface {
 	UpdateUserBucketName(userEmail string, bucketName string) error
 	GetUserIDByEmail(email string) (int, error)
 	GetBucketNameByEmail(email string) (string, error)
+    CheckIfFaceisScanned(userID int) (bool, error)
 }
 
 type service struct {
@@ -135,6 +136,17 @@ func (s *service) GetUserIDByEmail(email string) (int, error) {
 	}
 	return userID, nil
 }
+
+func (s *service) CheckIfFaceisScanned(userID int) (bool, error) {
+	var faceScannedStatus bool
+	query := `SELECT faceScanned FROM userInfo WHERE userID = $1`
+	err := s.db.QueryRow(query, userID).Scan(&faceScannedStatus)
+	if err != nil {
+		return false, fmt.Errorf("failed to get faceScannedStatus by userID: %v", err)
+	}
+	return faceScannedStatus, nil
+}
+
 
 // Get bucket name by email
 func (s *service) GetBucketNameByEmail(email string) (string, error) {

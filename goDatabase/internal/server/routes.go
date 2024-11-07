@@ -430,16 +430,34 @@ func (s *Server) userCookieInfo(c *gin.Context) {
     }
 
     userEmail, ok := session.Values["user_email"].(string)
-    userfName := session.Values["user_fName"].(string)
-    userlName := session.Values["user_lName"].(string)
-    userID := session.Values["user_database_id"]
 
     if !ok {
         c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
         return
     }
 
-    c.JSON(http.StatusOK, gin.H{"email": userEmail, "firstName": userfName, "lastName": userlName, "userID": userID})
+
+    userfName := session.Values["user_fName"].(string)
+    userlName := session.Values["user_lName"].(string)
+    userID := session.Values["user_database_id"].(int)
+    faceScannedStatus, err := s.db.CheckIfFaceisScanned(userID)
+
+    fmt.Println("UPDATED")
+    fmt.Println(faceScannedStatus)
+
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get faceScannedStatus"})
+        return
+    }
+
+
+    c.JSON(http.StatusOK, gin.H{
+        "email": userEmail,
+        "firstName": userfName,
+        "lastName": userlName,
+        "userID": userID,
+        "faceScannedStatus": faceScannedStatus
+    })
 }
 
 // Note: Adjusted the uploadHandler to comply with the updates
