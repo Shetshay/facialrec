@@ -1,11 +1,13 @@
 // app/Context/AuthContext.tsx
 "use client";
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface User {
   email: string;
   firstName: string;
   lastName: string;
+  faceScannedStatus: boolean;
 }
 
 interface AuthContextType {
@@ -19,6 +21,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Only '/' is public
+  const PUBLIC_ROUTES = ['/'];
 
   const checkAuth = async () => {
     try {
@@ -31,18 +38,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
         },
       });
-
       console.log('Auth response status:', response.status);
-      
       if (response.ok) {
         const userData = await response.json();
         console.log('User data received:', userData);
-        
         if (userData.email) {
           setUser({
             email: userData.email,
             firstName: userData.firstName,
-            lastName: userData.lastName
+            lastName: userData.lastName,
+            faceScannedStatus: userData.faceScannedStatus
           });
         } else {
           console.log('No user email in response');
@@ -60,20 +65,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Only check auth once on mount and after redirect
+  // Check authentication on mount
   useEffect(() => {
-    const path = window.location.pathname;
-    // Check if we're on the FaceScreenshot page
-    if (path === '/FaceScreenshot') {
-      checkAuth();
-    }
+    checkAuth();
   }, []);
 
+  // Route protection effect
+  useEffect(() => {
+    if (!isLoading) {
+      // Allow access to public route (home page) regardless of auth status
+      if (PUBLIC_ROUTES.includes(pathname)) {
+        return;
+      }
+
+      // If not logged in, redirect to home
+      if (!user) {
+        console.log('Not logged in, redirecting to home');
+        router.push('/');
+        return;
+      }
+
+      // If logged in but face not scanned
+      if (!user.faceScannedStatus) {
+        // Only allow access to FaceScreenshot page
+        if (pathname !== '/FaceScreenshot') {
+          console.log('Face not scanned, redirecting to FaceScreenshot');
+          router.push('/FaceScreenshot');
+          return;
+        }
+      }
+
+    if (user.faceScannedStatus && pathname === '/FaceScreenshot') {
+        console.log('Face already scanned, redirecting to dashboard');
+        router.push('/files');
+        return;
+      }
 
 
-  
 
-  // Add another useEffect to monitor user state changes
+      // If user is logged in and face is scanned, they can access any route
+      // No additional checks needed here as they have full access
+    }
+  }, [user, isLoading, pathname, router]);
+
+  // Monitor user state changes
   useEffect(() => {
     console.log('Current user state:', user);
   }, [user]);

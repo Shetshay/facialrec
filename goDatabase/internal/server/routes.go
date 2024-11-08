@@ -1,30 +1,33 @@
 package server
 
 import (
-	"bytes"
-	"context"
-	"fmt"
-	"io"
-	"log"
-	"mime"
-	"net/http"
-	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"time"
+    "bytes"
+    "context"
+    "fmt"
+    "io"
+    "log"
+    "mime"
+    "net/http"
+    "net/url"
+    "os"
+    "os/exec"
+    "path/filepath"
+    "strings"
+    "time"
 
-	"goDatabase/internal/auth"
+    "goDatabase/internal/auth"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-	"github.com/markbates/goth/gothic"
-	"github.com/minio/minio-go/v7"
+    "github.com/gin-contrib/cors"
+    "github.com/gin-gonic/gin"
+    "github.com/markbates/goth/gothic"
+    "github.com/minio/minio-go/v7"
 )
 
 func (s *Server) RegisterRoutes() *gin.Engine {
+    //    gin.setMode(gin.DebugMode)
+
     r := gin.Default()
+
 
     r.Use(cors.New(cors.Config{
         AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8000", "http://localhost:4269"}, // Add both domains
@@ -163,11 +166,19 @@ func (s *Server) logoutHandler(c *gin.Context) {
 
     ctx := context.WithValue(c.Request.Context(), "provider", provider)
 
+
     session, err := auth.Store.Get(c.Request, auth.SessionName)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get session"})
         return
     }
+
+    userID, ok := session.Values["user_database_id"].(int)
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID is missing from session"})
+        return
+    }
+
 
     session.Values = make(map[interface{}]interface{})
     session.Options.MaxAge = -1
@@ -179,14 +190,32 @@ func (s *Server) logoutHandler(c *gin.Context) {
         return
     }
 
+
+    updateErr := s.db.UpdateFaceScannedBool(userID, false)
+    if updateErr != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get update faceScannedStatus to false"})
+        return
+    }
+
     gothic.Logout(c.Writer, c.Request.WithContext(ctx))
+
 
     homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
     if homepageURL == "" {
         homepageURL = "http://localhost:8000"
     }
 
+
+    /* leave this here for debug purposes in case
+c.JSON(http.StatusOK, gin.H{
+"userID":       userID,
+})
+*/
+
     c.Redirect(http.StatusFound, homepageURL)
+
+
+
 }
 
 func (s *Server) getAuthCallbackFunction(c *gin.Context) {
@@ -287,11 +316,11 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
     }
 
     // Update user's bucket name in the database
-     err = s.db.UpdateUserBucketName(userEmail, bucketName)
-     if err != nil {
-         c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating user bucket name", "details": err.Error()})
-         return
-     } // Commented out to prevent database update
+    err = s.db.UpdateUserBucketName(userEmail, bucketName)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating user bucket name", "details": err.Error()})
+        return
+    } // Commented out to prevent database update
 
     // Redirect to homepage or desired page
     homepageURL := os.Getenv("HOMEPAGE_REDIRECT")
@@ -377,7 +406,7 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
             reader,
             objectSize,
             minio.PutObjectOptions{ContentType: contentType},
-        )
+            )
 
         if err != nil {
             log.Printf("Failed to upload file %s: %v", objectName, err)
@@ -456,7 +485,7 @@ func (s *Server) userCookieInfo(c *gin.Context) {
         "firstName": userfName,
         "lastName": userlName,
         "userID": userID,
-        "faceScannedStatus": faceScannedStatus
+        "faceScannedStatus": faceScannedStatus,
     })
 }
 
@@ -911,7 +940,7 @@ func (s *Server) createFolderHandler(c *gin.Context) {
         bytes.NewReader([]byte{}),
         0,
         minio.PutObjectOptions{ContentType: "application/x-directory"},
-    )
+        )
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create folder"})
         return

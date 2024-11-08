@@ -29,6 +29,7 @@ type Service interface {
 	GetUserIDByEmail(email string) (int, error)
 	GetBucketNameByEmail(email string) (string, error)
     CheckIfFaceisScanned(userID int) (bool, error)
+    UpdateFaceScannedBool(userID int, updateBool bool) error
 }
 
 type service struct {
@@ -145,6 +146,15 @@ func (s *service) CheckIfFaceisScanned(userID int) (bool, error) {
 		return false, fmt.Errorf("failed to get faceScannedStatus by userID: %v", err)
 	}
 	return faceScannedStatus, nil
+}
+
+func (s *service) UpdateFaceScannedBool(userID int, updateBool bool) error {
+	query := `UPDATE userInfo set faceScanned = $1 where userID = $2`
+	_, err := s.db.Exec(query, updateBool, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update faceScannedStatus bool: %v", err)
+	}
+	return nil
 }
 
 

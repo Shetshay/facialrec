@@ -8,7 +8,8 @@ import { getTextColorForBackground } from "../utils/getTextColorForBackground"; 
 
 type NavItem = {
     label: string;
-    href: string;
+    href?: string;
+    onClick?: () => void;
 };
 
 interface SidebarProps {
@@ -44,8 +45,8 @@ export default function Sidebar({ navItems, isNightMode, toggleTheme, theme }: S
 
             <div
                 className={`fixed top-0 left-0 h-full w-64 ${sidebarTextColor}
-        transform ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        transition-transform duration-300 ease-in-out z-20 flex flex-col justify-between`}
+transform ${isOpen ? "translate-x-0" : "-translate-x-full"}
+transition-transform duration-300 ease-in-out z-20 flex flex-col justify-between`}
                 style={{ backgroundColor: theme.sidebarBg }}
             >
                 <button
@@ -55,17 +56,29 @@ export default function Sidebar({ navItems, isNightMode, toggleTheme, theme }: S
                     <XMarkIcon className="h-6 w-6" />
                 </button>
 
+
+                {/* edit this for logout button and onclick activities */}
                 <nav className="flex-1 p-4 pt-16 space-y-2">
                     <ul>
                         {navItems.map((item, index) => (
                             <li key={index} className="list-none">
-                                <Link href={item.href} className={`block p-2 rounded hover:bg-gray-700 ${sidebarTextColor}`}>
-                                    {item.label}
-                                </Link>
+                                {item.href ? (
+                                    <Link href={item.href} className={`block p-2 rounded hover:bg-gray-700 ${sidebarTextColor}`}>
+                                        {item.label}
+                                    </Link>
+                                ) : (
+                                        <button
+                                            onClick={item.onClick}
+                                            className={`block p-2 rounded hover:bg-gray-700 ${sidebarTextColor}`}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    )}
                             </li>
                         ))}
                     </ul>
                 </nav>
+
 
                 {/* Add Theme Toggle Button */}
                 <div className={`relative py-4 flex items-center justify-between ${theme.sidebarBg}`}>
