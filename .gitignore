@@ -1,14 +1,21 @@
+# Ignore environment files
 .env
+
+# Ignore system files
 .DS_Store # For macOS
+
 # Ignore executables
 main
 *.exe
 *.out
+
+# Ignore node modules
 node_modules
 
-#IGNORING THE .JPG AND .TXT IN GODATABASE FOLDER
+# Ignore .jpg and .txt files in goDatabase folder
 goDatabase/*.txt
 goDatabase/*.jpg
 
-pythonFacialRec/__pycache__/databaseFunctions.cpython-310.pyc
-pythonFacialRec/__pycache__/facialFunctions.cpython-310.pyc
+# Ignore compiled Python files in __pycache__ directories
+pythonFacialRec/__pycache__/
+*.pyc
