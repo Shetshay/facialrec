@@ -423,23 +423,53 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
   )}
 </div>
                 {/* Download Button */}
-                {file.type !== "folder" && (
-                  <div className="p-4 bg-gray-50 border-t">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.location.href =
-                          file.url ||
-                          `http://localhost:3000/api/downloadFile/${encodeURIComponent(
-                            file.path || file.name
-                          )}`;
-                      }}
-                      className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                    >
-                      Download
-                    </button>
-                  </div>
-                )}
+{file.type !== "folder" && (
+  <div className="p-4 bg-gray-50 border-t">
+    <button
+      onClick={async (e) => {
+        e.stopPropagation();
+        try {
+          const response = await fetch(
+            `http://localhost:3000/api/downloadFile/${encodeURIComponent(
+              file.path || file.name
+            )}`,
+            {
+              method: 'GET',
+              credentials: 'include',
+            }
+          );
+          
+          if (!response.ok) throw new Error('Download failed');
+          
+          // Get the blob from the response
+          const blob = await response.blob();
+          
+          // Create a URL for the blob
+          const url = window.URL.createObjectURL(blob);
+          
+          // Create a temporary anchor element
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = file.name; // Set the download filename
+          document.body.appendChild(a);
+          
+          // Trigger the download
+          a.click();
+          
+          // Clean up
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } catch (error) {
+          console.error("Download error:", error);
+          alert("Failed to download file. Please try again.");
+        }
+      }}
+      className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+    >
+      Download
+    </button>
+  </div>
+)}
 
                 {editMode && (
                   <div className="absolute top-2 right-2">
