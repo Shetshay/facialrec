@@ -11,7 +11,9 @@ export default function FilesPage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [files, setFiles] = useState<FileObject[]>([]);
   const [editMode, setEditMode] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalType, setUploadModalType] = useState<
+    "files" | "folder" | null
+  >(null);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [initialized, setInitialized] = useState(false);
   const { user, isLoading } = useAuth();
@@ -27,7 +29,7 @@ export default function FilesPage() {
     type: string;
     count?: number;
   } | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<number | null>(null); // New state for download progress
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
 
   useEffect(() => {
     const initializePage = async () => {
@@ -260,7 +262,8 @@ export default function FilesPage() {
 
     const formData = new FormData();
     Array.from(selectedFiles).forEach((file) => {
-      formData.append("files", file);
+      const relativePath = (file as any).webkitRelativePath || file.name;
+      formData.append("files", file, relativePath);
     });
     formData.append("path", currentPath);
 
@@ -281,7 +284,7 @@ export default function FilesPage() {
       xhr.onload = async () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           await fetchFiles();
-          setShowUploadModal(false);
+          setUploadModalType(null);
           setSelectedFiles(null);
           setUploadProgress(null);
         } else {
@@ -414,10 +417,16 @@ export default function FilesPage() {
               {editMode ? "Cancel" : "Edit"}
             </button>
             <button
-              onClick={() => setShowUploadModal(true)}
+              onClick={() => setUploadModalType("files")}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
             >
-              Upload
+              Upload Files
+            </button>
+            <button
+              onClick={() => setUploadModalType("folder")}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Upload Folder
             </button>
           </div>
         </div>
@@ -666,15 +675,20 @@ export default function FilesPage() {
         )}
 
         {/* Upload Modal */}
-        {showUploadModal && (
+        {uploadModalType && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-              <h2 className="text-xl font-bold mb-4">Upload Files</h2>
+              <h2 className="text-xl font-bold mb-4">
+                {uploadModalType === "files" ? "Upload Files" : "Upload Folder"}
+              </h2>
               <input
                 type="file"
                 multiple
                 onChange={(e) => setSelectedFiles(e.target.files)}
                 className="mb-4"
+                {...(uploadModalType === "folder"
+                  ? ({ directory: "", webkitdirectory: "" } as any)
+                  : {})}
               />
 
               {uploadProgress !== null && (
@@ -691,7 +705,7 @@ export default function FilesPage() {
               <div className="flex justify-end space-x-4">
                 <button
                   onClick={() => {
-                    setShowUploadModal(false);
+                    setUploadModalType(null);
                     setSelectedFiles(null);
                     setUploadProgress(null);
                   }}
