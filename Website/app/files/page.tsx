@@ -39,21 +39,66 @@ export default function FilesPage() {
   }, [currentPath, initialized]);
 
   useEffect(() => {
-    const searchFiles = () => {
+    const searchFilesRecursively = async () => {
       if (!searchQuery.trim()) {
         setFilteredFiles(files);
         return;
       }
   
-      const query = searchQuery.toLowerCase();
-      const filtered = files.filter(file => 
-        file.name.toLowerCase().includes(query)
-      );
-      setFilteredFiles(filtered);
+      try {
+        // Get all files recursively
+        const allFiles: FileObject[] = [];
+        
+        const getAllFiles = async (path: string) => {
+          const queryPath = path ? `?path=${encodeURIComponent(path)}` : "";
+          const response = await fetch(
+            `http://localhost:3000/api/listBucket${queryPath}`,
+            {
+              method: "GET",
+              credentials: "include",
+            }
+          );
+  
+          if (response.ok) {
+            const data = await response.json();
+            const filesArray = Array.isArray(data.files) ? data.files : [];
+            
+            // Add path information to each file
+            const filesWithPath = filesArray.map((file: { name: any; }) => ({
+              ...file,
+              path: path ? `${path}/${file.name}` : file.name
+            }));
+            
+            // Add current level files to allFiles
+            allFiles.push(...filesWithPath);
+            
+            // Recursively get files from subfolders
+            for (const file of filesArray) {
+              if (file.type === 'folder') {
+                const folderPath = path ? `${path}/${file.name}` : file.name;
+                await getAllFiles(folderPath);
+              }
+            }
+          }
+        };
+  
+        await getAllFiles(currentPath);
+  
+        // Filter files based on search query
+        const query = searchQuery.toLowerCase();
+        const filtered = allFiles.filter(file => 
+          file.name.toLowerCase().includes(query)
+        );
+  
+        setFilteredFiles(filtered);
+      } catch (error) {
+        console.error("Error searching files:", error);
+        setFilteredFiles([]);
+      }
     };
   
-    searchFiles();
-  }, [searchQuery, files]);
+    searchFilesRecursively();
+  }, [searchQuery]);
 
   const fetchFiles = async () => {
     try {
@@ -300,21 +345,25 @@ export default function FilesPage() {
                   }
                 />
 
-                <div className="p-4 flex-grow">
-                  <h3 className="text-lg font-bold text-gray-800 break-words">
-                    {file.name}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Last Modified:{" "}
-                    {new Date(file.lastModified).toLocaleString()}
-                  </p>
-                  {file.type !== "folder" && (
-                    <p className="text-sm text-black-600">
-                      Size: {formatFileSize(file.size)}
-                    </p>
-                  )}
-                </div>
-
+<div className="p-4 flex-grow">
+  <h3 className="text-lg font-bold text-gray-800 break-words">
+    {file.name}
+  </h3>
+  {searchQuery && file.path && (
+    <p className="text-sm text-gray-500 mt-1">
+      Path: {file.path}
+    </p>
+  )}
+  <p className="text-sm text-gray-600">
+    Last Modified:{" "}
+    {new Date(file.lastModified).toLocaleString()}
+  </p>
+  {file.type !== "folder" && (
+    <p className="text-sm text-black-600">
+      Size: {formatFileSize(file.size)}
+    </p>
+  )}
+</div>
                 {/* Download Button */}
                 {file.type !== "folder" && (
                   <div className="p-4 bg-gray-50 border-t">
