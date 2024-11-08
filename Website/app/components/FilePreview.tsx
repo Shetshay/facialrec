@@ -77,7 +77,19 @@ const FileIcon = ({
   type: string;
   className?: string;
 }) => {
+  // First check if it's a folder
   const icons: { [key: string]: React.ReactElement } = {
+    folder: (
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        className={className}
+        viewBox="0 0 24 24" 
+        fill="currentColor"
+        style={{ color: '#9CA3AF' }} // Changed to grey (you can adjust the hex code for different shades)
+      >
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
     image: <FaFileImage className={className} />,
     pdf: <FaFilePdf className={className} />,
     word: <FaFileWord className={className} />,
@@ -92,7 +104,6 @@ const FileIcon = ({
 
   return icons[type] || icons.generic;
 };
-
 const FilePreview: React.FC<FilePreviewProps> = ({ file, onClick }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const fileType = getFileType(file.name);
@@ -104,6 +115,13 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClick }) => {
   };
 
   const PreviewContent = () => {
+    if (file.type === "folder") {
+      return (
+        <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+          <FileIcon type="folder" className="w-20 h-20" />
+        </div>
+      );
+    }
     if (fileType === "image") {
       return (
         <div className="relative group">
