@@ -1,26 +1,26 @@
 package server
 
 import (
-    "bytes"
-    "context"
-    "fmt"
-    "io"
-    "log"
-    "mime"
-    "net/http"
-    "net/url"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "strings"
-    "time"
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"mime"
+	"net/http"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
 
-    "goDatabase/internal/auth"
+	"goDatabase/internal/auth"
 
-    "github.com/gin-contrib/cors"
-    "github.com/gin-gonic/gin"
-    "github.com/markbates/goth/gothic"
-    "github.com/minio/minio-go/v7"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/markbates/goth/gothic"
+	"github.com/minio/minio-go/v7"
 )
 
 func (s *Server) RegisterRoutes() *gin.Engine {
@@ -53,7 +53,8 @@ func (s *Server) RegisterRoutes() *gin.Engine {
     r.GET("/api/check-image", s.checkImageHandler)
     r.POST("/api/encrypt", s.encryptHandler)
     r.POST("/api/decrypt", s.decryptHandler)
-    r.GET("/api/downloadFile/:path", s.downloadFileHandler)
+    r.GET("/api/downloadFile/*path", s.downloadFileHandler)
+
 
     r.GET("/api/listBucket", s.listBucket)
 
@@ -612,10 +613,8 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
         return
     }
 
-    // Get file path from URL parameter
+        // Decode URL-encoded file path
     filePath := c.Param("path")
-
-    // Decode URL-encoded file path
     objectName, err := url.PathUnescape(filePath)
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
@@ -624,6 +623,8 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
 
     // Clean the object name to prevent path traversal
     objectName = filepath.Clean(objectName)
+
+
 
     // Get object from MinIO
     object, err := s.minioClient.GetObject(context.Background(), bucketName, objectName, minio.GetObjectOptions{})

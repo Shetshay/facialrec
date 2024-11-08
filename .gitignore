@@ -10,3 +10,5 @@ node_modules
 goDatabase/*.txt
 goDatabase/*.jpg
 
+pythonFacialRec/__pycache__/databaseFunctions.cpython-310.pyc
+pythonFacialRec/__pycache__/facialFunctions.cpython-310.pyc

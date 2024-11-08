@@ -20,9 +20,13 @@ export default function FilesPage() {
   const [filteredFiles, setFilteredFiles] = useState<FileObject[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [fileTypeFilter, setFileTypeFilter] = useState<string>("all");
-// Add these with your other state declarations
-const [showDeleteModal, setShowDeleteModal] = useState(false);
-const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; count?: number } | null>(null);
+  // Add these with your other state declarations
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{
+    name: string;
+    type: string;
+    count?: number;
+  } | null>(null);
 
   useEffect(() => {
     const initializePage = async () => {
@@ -46,10 +50,10 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
         setFilteredFiles(files);
         return;
       }
-  
+
       try {
         const allFiles: FileObject[] = [];
-        
+
         const getAllFiles = async (path: string) => {
           const queryPath = path ? `?path=${encodeURIComponent(path)}` : "";
           const response = await fetch(
@@ -59,76 +63,91 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
               credentials: "include",
             }
           );
-  
+
           if (response.ok) {
             const data = await response.json();
             const filesArray = Array.isArray(data.files) ? data.files : [];
-            
-            const filesWithPath = filesArray.map((file: { name: any; }) => ({
+
+            const filesWithPath = filesArray.map((file: { name: any }) => ({
               ...file,
-              path: path ? `${path}/${file.name}` : file.name
+              path: path ? `${path}/${file.name}` : file.name,
             }));
-            
+
             allFiles.push(...filesWithPath);
-            
+
             for (const file of filesArray) {
-              if (file.type === 'folder') {
+              if (file.type === "folder") {
                 const folderPath = path ? `${path}/${file.name}` : file.name;
                 await getAllFiles(folderPath);
               }
             }
           }
         };
-  
+
         await getAllFiles(currentPath);
-  
+
         // Filter by search query and file type
         const query = searchQuery.toLowerCase();
         let filtered = allFiles;
-  
+
         // Apply search filter if query exists
         if (searchQuery.trim()) {
-          filtered = filtered.filter(file => 
+          filtered = filtered.filter((file) =>
             file.name.toLowerCase().includes(query)
           );
         }
-  
+
         // Apply file type filter
         if (fileTypeFilter !== "all") {
-          filtered = filtered.filter(file => {
-            const extension = file.name.split('.').pop()?.toLowerCase() || '';
+          filtered = filtered.filter((file) => {
+            const extension = file.name.split(".").pop()?.toLowerCase() || "";
             switch (fileTypeFilter) {
-              case 'images':
-                return ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(extension);
-              case 'documents':
-                return ['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt'].includes(extension);
-              case 'spreadsheets':
-                return ['xls', 'xlsx', 'csv', 'ods'].includes(extension);
-              case 'presentations':
-                return ['ppt', 'pptx', 'odp'].includes(extension);
-              case 'audio':
-                return ['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(extension);
-              case 'video':
-                return ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv'].includes(extension);
-              case 'archives':
-                return ['zip', 'rar', '7z', 'tar', 'gz'].includes(extension);
-              case 'code':
-                return ['js', 'ts', 'py', 'java', 'cpp', 'html', 'css', 'php'].includes(extension);
-              case 'folders':
-                return file.type === 'folder';
+              case "images":
+                return ["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(
+                  extension
+                );
+              case "documents":
+                return ["pdf", "doc", "docx", "txt", "rtf", "odt"].includes(
+                  extension
+                );
+              case "spreadsheets":
+                return ["xls", "xlsx", "csv", "ods"].includes(extension);
+              case "presentations":
+                return ["ppt", "pptx", "odp"].includes(extension);
+              case "audio":
+                return ["mp3", "wav", "ogg", "m4a", "flac"].includes(extension);
+              case "video":
+                return ["mp4", "avi", "mov", "wmv", "flv", "mkv"].includes(
+                  extension
+                );
+              case "archives":
+                return ["zip", "rar", "7z", "tar", "gz"].includes(extension);
+              case "code":
+                return [
+                  "js",
+                  "ts",
+                  "py",
+                  "java",
+                  "cpp",
+                  "html",
+                  "css",
+                  "php",
+                ].includes(extension);
+              case "folders":
+                return file.type === "folder";
               default:
                 return true;
             }
           });
         }
-  
+
         setFilteredFiles(filtered);
       } catch (error) {
         console.error("Error searching files:", error);
         setFilteredFiles([]);
       }
     };
-  
+
     searchFilesRecursively();
   }, [searchQuery, fileTypeFilter]);
 
@@ -162,7 +181,7 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
 
   const handleDeleteItem = async (name: string, type: "file" | "folder") => {
     const fullPath = currentPath ? `${currentPath}/${name}` : name;
-  
+
     try {
       const response = await fetch("http://localhost:3000/api/deleteFile", {
         method: "POST",
@@ -175,9 +194,9 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
           type: type,
         }),
       });
-  
+
       const data = await response.json();
-  
+
       if (data.needsConfirmation) {
         setItemToDelete({ name, type, count: data.count });
         setShowDeleteModal(true);
@@ -190,7 +209,7 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
       alert("Failed to delete item. Please try again.");
     }
   };
-  
+
   // Add this new function to handle the actual deletion
   const performDelete = async (path: string, type: string) => {
     try {
@@ -208,7 +227,7 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
           }),
         }
       );
-  
+
       if (!deleteResponse.ok) throw new Error("Failed to delete item");
       await fetchFiles();
       setShowDeleteModal(false);
@@ -302,9 +321,7 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white-800">Files</h1>
-            {user && (
-              <p className="text-white">Welcome, {user.firstName}!</p>
-            )}
+            {user && <p className="text-white">Welcome, {user.firstName}!</p>}
           </div>
           <div className="space-x-4">
             <button
@@ -328,50 +345,51 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
           </div>
         </div>
 
-
-                {/* Add Search Bar */}
+        {/* Add Search Bar */}
         {/* Search and Filter Section */}
-<div className="mb-6 flex gap-4">
-  <div className="relative flex-grow">
-    <input
-      type="text"
-      placeholder="Search files and folders..."
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      className="w-full px-4 py-2 pl-10 pr-4 text-gray-700 bg-white border rounded-lg focus:outline-none focus:border-blue-500"
-    />
-    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-  </div>
-  <select
-    value={fileTypeFilter}
-    onChange={(e) => setFileTypeFilter(e.target.value)}
-    className="px-4 py-2 border rounded-lg bg-white text-gray-700 focus:outline-none focus:border-blue-500"
-  >
-    <option value="all">All Files</option>
-    <option value="images">Images</option>
-    <option value="documents">Documents</option>
-    <option value="spreadsheets">Spreadsheets</option>
-    <option value="presentations">Presentations</option>
-    <option value="audio">Audio</option>
-    <option value="video">Video</option>
-    <option value="archives">Archives</option>
-    <option value="code">Code Files</option>
-    <option value="folders">Folders</option>
-  </select>
-</div>
+        <div className="mb-6 flex gap-4">
+          <div className="relative flex-grow">
+            <input
+              type="text"
+              placeholder="Search files and folders..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 pl-10 pr-4 text-gray-700 bg-white border rounded-lg focus:outline-none focus:border-blue-500"
+            />
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          </div>
+          <select
+            value={fileTypeFilter}
+            onChange={(e) => setFileTypeFilter(e.target.value)}
+            className="px-4 py-2 border rounded-lg bg-white text-gray-700 focus:outline-none focus:border-blue-500"
+          >
+            <option value="all">All Files</option>
+            <option value="images">Images</option>
+            <option value="documents">Documents</option>
+            <option value="spreadsheets">Spreadsheets</option>
+            <option value="presentations">Presentations</option>
+            <option value="audio">Audio</option>
+            <option value="video">Video</option>
+            <option value="archives">Archives</option>
+            <option value="code">Code Files</option>
+            <option value="folders">Folders</option>
+          </select>
+        </div>
 
         {/* Navigation Bar */}
         {currentPath && (
-  <div className="flex items-center space-x-2 mb-4">
-    <button
-      onClick={handleNavigateBack}
-      className="p-2 hover:bg-gray-700 rounded-full"
-    >
-      <FaArrowLeft className="text-white" /> {/* Changed from text-gray-600 */}
-    </button>
-    <span className="text-white">Current path: {currentPath}</span> {/* Changed from text-gray-600 */}
-  </div>
-)}
+          <div className="flex items-center space-x-2 mb-4">
+            <button
+              onClick={handleNavigateBack}
+              className="p-2 hover:bg-gray-700 rounded-full"
+            >
+              <FaArrowLeft className="text-white" />{" "}
+              {/* Changed from text-gray-600 */}
+            </button>
+            <span className="text-white">Current path: {currentPath}</span>{" "}
+            {/* Changed from text-gray-600 */}
+          </div>
+        )}
 
         {/* Files Grid */}
         {filteredFiles.length === 0 ? (
@@ -380,8 +398,8 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {filteredFiles.map((file, index) => (
-                <div
+            {filteredFiles.map((file, index) => (
+              <div
                 key={index}
                 className="relative bg-white shadow-lg rounded-lg flex flex-col h-full"
               >
@@ -399,77 +417,78 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
                         : undefined,
                   }}
                   onClick={() =>
-                    file.type === "folder" && handleNavigateToFolder(file.name)
+                    file.type === "folder" &&
+                    handleNavigateToFolder(file.path || file.name)
                   }
                 />
 
-<div className="p-4 flex-grow">
-  <h3 className="text-lg font-bold text-gray-800 break-words">
-    {file.name}
-  </h3>
-  {searchQuery && file.path && (
-    <p className="text-sm text-gray-500 mt-1">
-      Path: {file.path}
-    </p>
-  )}
-  <p className="text-sm text-gray-600">
-    Last Modified:{" "}
-    {new Date(file.lastModified).toLocaleString()}
-  </p>
-  {file.type !== "folder" && (
-    <p className="text-sm text-black">
-      Size: {formatFileSize(file.size)}
-    </p>
-  )}
-</div>
+                <div className="p-4 flex-grow">
+                  <h3 className="text-lg font-bold text-gray-800 break-words">
+                    {file.name}
+                  </h3>
+                  {searchQuery && file.path && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Path: {file.path}
+                    </p>
+                  )}
+                  <p className="text-sm text-gray-600">
+                    Last Modified:{" "}
+                    {new Date(file.lastModified).toLocaleString()}
+                  </p>
+                  {file.type !== "folder" && (
+                    <p className="text-sm text-black">
+                      Size: {formatFileSize(file.size)}
+                    </p>
+                  )}
+                </div>
                 {/* Download Button */}
-{file.type !== "folder" && (
-  <div className="p-4 bg-gray-50 border-t">
-    <button
-      onClick={async (e) => {
-        e.stopPropagation();
-        try {
-          const response = await fetch(
-            `http://localhost:3000/api/downloadFile/${encodeURIComponent(
-              file.path || file.name
-            )}`,
-            {
-              method: 'GET',
-              credentials: 'include',
-            }
-          );
-          
-          if (!response.ok) throw new Error('Download failed');
-          
-          // Get the blob from the response
-          const blob = await response.blob();
-          
-          // Create a URL for the blob
-          const url = window.URL.createObjectURL(blob);
-          
-          // Create a temporary anchor element
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = file.name; // Set the download filename
-          document.body.appendChild(a);
-          
-          // Trigger the download
-          a.click();
-          
-          // Clean up
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        } catch (error) {
-          console.error("Download error:", error);
-          alert("Failed to download file. Please try again.");
-        }
-      }}
-      className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-    >
-      Download
-    </button>
-  </div>
-)}
+                {file.type !== "folder" && (
+                  <div className="p-4 bg-gray-50 border-t">
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const response = await fetch(
+                            `http://localhost:3000/api/downloadFile/${encodeURIComponent(
+                              file.path || file.name
+                            )}`,
+                            {
+                              method: "GET",
+                              credentials: "include",
+                            }
+                          );
+
+                          if (!response.ok) throw new Error("Download failed");
+
+                          // Get the blob from the response
+                          const blob = await response.blob();
+
+                          // Create a URL for the blob
+                          const url = window.URL.createObjectURL(blob);
+
+                          // Create a temporary anchor element
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = file.name; // Set the download filename
+                          document.body.appendChild(a);
+
+                          // Trigger the download
+                          a.click();
+
+                          // Clean up
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                        } catch (error) {
+                          console.error("Download error:", error);
+                          alert("Failed to download file. Please try again.");
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      Download
+                    </button>
+                  </div>
+                )}
 
                 {editMode && (
                   <div className="absolute top-2 right-2">
@@ -489,82 +508,82 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
           </div>
         )}
 
-    
-{/* Delete Confirmation Modal */}
-{showDeleteModal && itemToDelete && (
-  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <h2 className="text-xl font-bold mb-4">Confirm Deletion</h2>
-      <div className="mb-6">
-        {itemToDelete.type === 'folder' ? (
-          <p className="text-gray-600">
-            This folder "{itemToDelete.name}" contains {itemToDelete.count} item(s).
-            Are you sure you want to delete the folder and all its contents?
-          </p>
-        ) : (
-          <p className="text-gray-600">
-            Are you sure you want to delete "{itemToDelete.name}"?
-          </p>
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && itemToDelete && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Confirm Deletion</h2>
+              <div className="mb-6">
+                {itemToDelete.type === "folder" ? (
+                  <p className="text-gray-600">
+                    This folder "{itemToDelete.name}" contains{" "}
+                    {itemToDelete.count} item(s). Are you sure you want to
+                    delete the folder and all its contents?
+                  </p>
+                ) : (
+                  <p className="text-gray-600">
+                    Are you sure you want to delete "{itemToDelete.name}"?
+                  </p>
+                )}
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setItemToDelete(null);
+                  }}
+                  className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const fullPath = currentPath
+                      ? `${currentPath}/${itemToDelete.name}`
+                      : itemToDelete.name;
+                    performDelete(fullPath, itemToDelete.type);
+                  }}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
         )}
-      </div>
-      <div className="flex justify-end space-x-4">
-        <button
-          onClick={() => {
-            setShowDeleteModal(false);
-            setItemToDelete(null);
-          }}
-          className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={() => {
-            const fullPath = currentPath 
-              ? `${currentPath}/${itemToDelete.name}` 
-              : itemToDelete.name;
-            performDelete(fullPath, itemToDelete.type);
-          }}
-          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-{showNewFolderModal && (
-  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <h2 className="text-xl font-bold mb-4">Create New Folder</h2>
-      <input
-  type="text"
-  value={newFolderName}
-  onChange={(e) => setNewFolderName(e.target.value)}
-  placeholder="Folder name"
-  className="w-full p-2 border rounded mb-4 bg-white text-black ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-500"
-  style={{ color: 'black' }}
-  autoFocus
-/>
-      <div className="flex justify-end space-x-4">
-        <button
-          onClick={() => {
-            setShowNewFolderModal(false);
-            setNewFolderName("");
-          }}
-          className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleCreateFolder}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-        >
-          Create
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        {showNewFolderModal && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Create New Folder</h2>
+              <input
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Folder name"
+                className="w-full p-2 border rounded mb-4 bg-white text-black ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-500"
+                style={{ color: "black" }}
+                autoFocus
+              />
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => {
+                    setShowNewFolderModal(false);
+                    setNewFolderName("");
+                  }}
+                  className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateFolder}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showUploadModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">

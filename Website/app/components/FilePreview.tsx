@@ -80,12 +80,12 @@ const FileIcon = ({
   // First check if it's a folder
   const icons: { [key: string]: React.ReactElement } = {
     folder: (
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
         className={className}
-        viewBox="0 0 24 24" 
+        viewBox="0 0 24 24"
         fill="currentColor"
-        style={{ color: '#9CA3AF' }} // Changed to grey (you can adjust the hex code for different shades)
+        style={{ color: "#9CA3AF" }} // Changed to grey (you can adjust the hex code for different shades)
       >
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
       </svg>
@@ -126,7 +126,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClick }) => {
       return (
         <div className="relative group">
           <img
-            src={file.url || "/placeholder.png"}
+            src={file.url || "/placeholder.png"} // Use the correct URL for images in subfolders
             alt={file.name}
             className="w-full h-48 object-cover transition-all duration-300 filter group-hover:blur-none"
             style={{ backdropFilter: "blur(5px)" }}
