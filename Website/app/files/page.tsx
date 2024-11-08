@@ -201,7 +201,7 @@ export default function FilesPage() {
           <div className="space-x-4">
             <button
               onClick={() => setShowNewFolderModal(true)}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+              className="px-4 py-2 bg-green-500 text-black rounded-lg hover:bg-green-600"
             >
               New Folder
             </button>
@@ -272,7 +272,7 @@ export default function FilesPage() {
                     {new Date(file.lastModified).toLocaleString()}
                   </p>
                   {file.type !== "folder" && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-black-600">
                       Size: {formatFileSize(file.size)}
                     </p>
                   )}
@@ -316,38 +316,41 @@ export default function FilesPage() {
         )}
 
         {/* Modals */}
-        {showNewFolderModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-xl font-bold mb-4">Create New Folder</h2>
-              <input
-                type="text"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="Folder name"
-                className="w-full p-2 border rounded mb-4"
-                autoFocus
-              />
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => {
-                    setShowNewFolderModal(false);
-                    setNewFolderName("");
-                  }}
-                  className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateFolder}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  Create
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+{/* ... rest of your code remains the same until the modal ... */}
+
+{showNewFolderModal && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <h2 className="text-xl font-bold mb-4">Create New Folder</h2>
+      <input
+  type="text"
+  value={newFolderName}
+  onChange={(e) => setNewFolderName(e.target.value)}
+  placeholder="Folder name"
+  className="w-full p-2 border rounded mb-4 bg-white text-black ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-500"
+  style={{ color: 'black' }}
+  autoFocus
+/>
+      <div className="flex justify-end space-x-4">
+        <button
+          onClick={() => {
+            setShowNewFolderModal(false);
+            setNewFolderName("");
+          }}
+          className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleCreateFolder}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
+          Create
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
         {showUploadModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -385,6 +388,7 @@ export default function FilesPage() {
 }
 
 interface FileObject {
+  url: string;
   name: string;
   lastModified: string;
   size: number;
