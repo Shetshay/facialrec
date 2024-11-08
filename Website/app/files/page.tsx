@@ -19,7 +19,7 @@ export default function FilesPage() {
   const [newFolderName, setNewFolderName] = useState("");
   const [filteredFiles, setFilteredFiles] = useState<FileObject[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [fileTypeFilter, setFileTypeFilter] = useState<string>("all");
 
 
   useEffect(() => {
@@ -40,13 +40,12 @@ export default function FilesPage() {
 
   useEffect(() => {
     const searchFilesRecursively = async () => {
-      if (!searchQuery.trim()) {
+      if (!searchQuery.trim() && fileTypeFilter === "all") {
         setFilteredFiles(files);
         return;
       }
   
       try {
-        // Get all files recursively
         const allFiles: FileObject[] = [];
         
         const getAllFiles = async (path: string) => {
@@ -63,16 +62,13 @@ export default function FilesPage() {
             const data = await response.json();
             const filesArray = Array.isArray(data.files) ? data.files : [];
             
-            // Add path information to each file
             const filesWithPath = filesArray.map((file: { name: any; }) => ({
               ...file,
               path: path ? `${path}/${file.name}` : file.name
             }));
             
-            // Add current level files to allFiles
             allFiles.push(...filesWithPath);
             
-            // Recursively get files from subfolders
             for (const file of filesArray) {
               if (file.type === 'folder') {
                 const folderPath = path ? `${path}/${file.name}` : file.name;
@@ -84,11 +80,45 @@ export default function FilesPage() {
   
         await getAllFiles(currentPath);
   
-        // Filter files based on search query
+        // Filter by search query and file type
         const query = searchQuery.toLowerCase();
-        const filtered = allFiles.filter(file => 
-          file.name.toLowerCase().includes(query)
-        );
+        let filtered = allFiles;
+  
+        // Apply search filter if query exists
+        if (searchQuery.trim()) {
+          filtered = filtered.filter(file => 
+            file.name.toLowerCase().includes(query)
+          );
+        }
+  
+        // Apply file type filter
+        if (fileTypeFilter !== "all") {
+          filtered = filtered.filter(file => {
+            const extension = file.name.split('.').pop()?.toLowerCase() || '';
+            switch (fileTypeFilter) {
+              case 'images':
+                return ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(extension);
+              case 'documents':
+                return ['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt'].includes(extension);
+              case 'spreadsheets':
+                return ['xls', 'xlsx', 'csv', 'ods'].includes(extension);
+              case 'presentations':
+                return ['ppt', 'pptx', 'odp'].includes(extension);
+              case 'audio':
+                return ['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(extension);
+              case 'video':
+                return ['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv'].includes(extension);
+              case 'archives':
+                return ['zip', 'rar', '7z', 'tar', 'gz'].includes(extension);
+              case 'code':
+                return ['js', 'ts', 'py', 'java', 'cpp', 'html', 'css', 'php'].includes(extension);
+              case 'folders':
+                return file.type === 'folder';
+              default:
+                return true;
+            }
+          });
+        }
   
         setFilteredFiles(filtered);
       } catch (error) {
@@ -98,7 +128,7 @@ export default function FilesPage() {
     };
   
     searchFilesRecursively();
-  }, [searchQuery]);
+  }, [searchQuery, fileTypeFilter]);
 
   const fetchFiles = async () => {
     try {
@@ -289,18 +319,35 @@ export default function FilesPage() {
 
 
                 {/* Add Search Bar */}
-        <div className="mb-6">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search files and folders..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 pl-10 pr-4 text-gray-700 bg-white border rounded-lg focus:outline-none focus:border-blue-500"
-            />
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          </div>
-        </div>
+        {/* Search and Filter Section */}
+<div className="mb-6 flex gap-4">
+  <div className="relative flex-grow">
+    <input
+      type="text"
+      placeholder="Search files and folders..."
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      className="w-full px-4 py-2 pl-10 pr-4 text-gray-700 bg-white border rounded-lg focus:outline-none focus:border-blue-500"
+    />
+    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+  </div>
+  <select
+    value={fileTypeFilter}
+    onChange={(e) => setFileTypeFilter(e.target.value)}
+    className="px-4 py-2 border rounded-lg bg-white text-gray-700 focus:outline-none focus:border-blue-500"
+  >
+    <option value="all">All Files</option>
+    <option value="images">Images</option>
+    <option value="documents">Documents</option>
+    <option value="spreadsheets">Spreadsheets</option>
+    <option value="presentations">Presentations</option>
+    <option value="audio">Audio</option>
+    <option value="video">Video</option>
+    <option value="archives">Archives</option>
+    <option value="code">Code Files</option>
+    <option value="folders">Folders</option>
+  </select>
+</div>
 
         {/* Navigation Bar */}
         {currentPath && (
