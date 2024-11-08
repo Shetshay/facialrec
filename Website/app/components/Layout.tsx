@@ -27,7 +27,6 @@ export default function Layout({ children }: LayoutProps) {
     const [isNightMode, setIsNightMode] = useState(true); // Manage day/night mode state
 
     const navItems = [
-        { label: "DashBoard", href: "/UserPage" },
         { label: "User", href: "/user" },
         { label: "Files", href: "/files" },
         { label: "Logout", href: "http://localhost:3000/api/logout/google" }
