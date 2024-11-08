@@ -4,7 +4,7 @@
 main
 *.exe
 *.out
-main
+node_modules
 
 #IGNORING THE .JPG AND .TXT IN GODATABASE FOLDER
 goDatabase/*.txt
