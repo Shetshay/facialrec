@@ -20,7 +20,9 @@ export default function FilesPage() {
   const [filteredFiles, setFilteredFiles] = useState<FileObject[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [fileTypeFilter, setFileTypeFilter] = useState<string>("all");
-
+// Add these with your other state declarations
+const [showDeleteModal, setShowDeleteModal] = useState(false);
+const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; count?: number } | null>(null);
 
   useEffect(() => {
     const initializePage = async () => {
@@ -160,7 +162,7 @@ export default function FilesPage() {
 
   const handleDeleteItem = async (name: string, type: "file" | "folder") => {
     const fullPath = currentPath ? `${currentPath}/${name}` : name;
-
+  
     try {
       const response = await fetch("http://localhost:3000/api/deleteFile", {
         method: "POST",
@@ -173,35 +175,44 @@ export default function FilesPage() {
           type: type,
         }),
       });
-
+  
       const data = await response.json();
-
+  
       if (data.needsConfirmation) {
-        const confirmed = window.confirm(
-          `This folder contains ${data.count} item(s). Are you sure you want to delete the folder and all its contents?`
-        );
-
-        if (!confirmed) return;
-
-        const deleteResponse = await fetch(
-          "http://localhost:3000/api/deleteFile?confirmed=true",
-          {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              path: fullPath,
-              type: type,
-            }),
-          }
-        );
-
-        if (!deleteResponse.ok) throw new Error("Failed to delete folder");
+        setItemToDelete({ name, type, count: data.count });
+        setShowDeleteModal(true);
+      } else {
+        // If it's a single file, delete directly
+        await performDelete(fullPath, type);
       }
-
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      alert("Failed to delete item. Please try again.");
+    }
+  };
+  
+  // Add this new function to handle the actual deletion
+  const performDelete = async (path: string, type: string) => {
+    try {
+      const deleteResponse = await fetch(
+        "http://localhost:3000/api/deleteFile?confirmed=true",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            path,
+            type,
+          }),
+        }
+      );
+  
+      if (!deleteResponse.ok) throw new Error("Failed to delete item");
       await fetchFiles();
+      setShowDeleteModal(false);
+      setItemToDelete(null);
     } catch (error) {
       console.error("Error deleting item:", error);
       alert("Failed to delete item. Please try again.");
@@ -450,7 +461,48 @@ export default function FilesPage() {
 
         {/* Modals */}
 {/* ... rest of your code remains the same until the modal ... */}
-
+{/* Delete Confirmation Modal */}
+{showDeleteModal && itemToDelete && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <h2 className="text-xl font-bold mb-4">Confirm Deletion</h2>
+      <div className="mb-6">
+        {itemToDelete.type === 'folder' ? (
+          <p className="text-gray-600">
+            This folder "{itemToDelete.name}" contains {itemToDelete.count} item(s).
+            Are you sure you want to delete the folder and all its contents?
+          </p>
+        ) : (
+          <p className="text-gray-600">
+            Are you sure you want to delete "{itemToDelete.name}"?
+          </p>
+        )}
+      </div>
+      <div className="flex justify-end space-x-4">
+        <button
+          onClick={() => {
+            setShowDeleteModal(false);
+            setItemToDelete(null);
+          }}
+          className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => {
+            const fullPath = currentPath 
+              ? `${currentPath}/${itemToDelete.name}` 
+              : itemToDelete.name;
+            performDelete(fullPath, itemToDelete.type);
+          }}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 {showNewFolderModal && (
   <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
     <div className="bg-white rounded-lg p-6 w-full max-w-md">
