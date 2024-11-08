@@ -8,6 +8,7 @@ import { useAuth } from "../Context/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function FilesPage() {
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null); // New state to store upload progress
   const [files, setFiles] = useState<FileObject[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -263,22 +264,41 @@ export default function FilesPage() {
     formData.append("path", currentPath);
 
     try {
-      const response = await fetch("http://localhost:3000/api/uploadFile", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "http://localhost:3000/api/uploadFile", true);
+      xhr.withCredentials = true;
 
-      if (response.ok) {
-        await fetchFiles();
-        setShowUploadModal(false);
-        setSelectedFiles(null);
-      } else {
-        throw new Error("Upload failed");
-      }
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round(
+            (event.loaded / event.total) * 100
+          );
+          setUploadProgress(percentComplete); // Update the state with the current progress
+        }
+      };
+
+      xhr.onload = async () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          await fetchFiles();
+          setShowUploadModal(false);
+          setSelectedFiles(null);
+          setUploadProgress(null); // Reset progress after completion
+        } else {
+          alert("Upload failed");
+          setUploadProgress(null);
+        }
+      };
+
+      xhr.onerror = () => {
+        alert("Failed to upload files. Please try again.");
+        setUploadProgress(null);
+      };
+
+      xhr.send(formData);
     } catch (error) {
       console.error("Error uploading files:", error);
       alert("Failed to upload files. Please try again.");
+      setUploadProgress(null);
     }
   };
 
@@ -345,7 +365,6 @@ export default function FilesPage() {
           </div>
         </div>
 
-        {/* Add Search Bar */}
         {/* Search and Filter Section */}
         <div className="mb-6 flex gap-4">
           <div className="relative flex-grow">
@@ -383,11 +402,9 @@ export default function FilesPage() {
               onClick={handleNavigateBack}
               className="p-2 hover:bg-gray-700 rounded-full"
             >
-              <FaArrowLeft className="text-white" />{" "}
-              {/* Changed from text-gray-600 */}
+              <FaArrowLeft className="text-white" />
             </button>
-            <span className="text-white">Current path: {currentPath}</span>{" "}
-            {/* Changed from text-gray-600 */}
+            <span className="text-white">Current path: {currentPath}</span>
           </div>
         )}
 
@@ -551,6 +568,8 @@ export default function FilesPage() {
             </div>
           </div>
         )}
+
+        {/* New Folder Modal */}
         {showNewFolderModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -585,9 +604,10 @@ export default function FilesPage() {
           </div>
         )}
 
+        {/* Upload Modal */}
         {showUploadModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
               <h2 className="text-xl font-bold mb-4">Upload Files</h2>
               <input
                 type="file"
@@ -595,11 +615,24 @@ export default function FilesPage() {
                 onChange={(e) => setSelectedFiles(e.target.files)}
                 className="mb-4"
               />
+
+              {uploadProgress !== null && (
+                <div className="w-full bg-gray-200 rounded-full h-6 mb-4">
+                  <div
+                    className="bg-blue-500 h-6 rounded-full text-center text-white"
+                    style={{ width: `${uploadProgress}%` }}
+                  >
+                    {uploadProgress}%
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end space-x-4">
                 <button
                   onClick={() => {
                     setShowUploadModal(false);
                     setSelectedFiles(null);
+                    setUploadProgress(null); // Reset progress when cancelled
                   }}
                   className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
                 >
@@ -608,8 +641,9 @@ export default function FilesPage() {
                 <button
                   onClick={handleUploadSubmit}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  disabled={uploadProgress !== null} // Disable button when uploading
                 >
-                  Upload
+                  {uploadProgress !== null ? "Uploading..." : "Upload"}
                 </button>
               </div>
             </div>
