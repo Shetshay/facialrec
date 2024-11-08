@@ -2,7 +2,7 @@
 
 import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
-import { FaTimes, FaArrowLeft } from "react-icons/fa";
+import { FaTimes, FaArrowLeft, FaSearch } from "react-icons/fa";
 import FilePreview from "../components/FilePreview";
 import { useAuth } from "../Context/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -17,6 +17,10 @@ export default function FilesPage() {
   const [currentPath, setCurrentPath] = useState<string>("");
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [filteredFiles, setFilteredFiles] = useState<FileObject[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+
 
   useEffect(() => {
     const initializePage = async () => {
@@ -33,6 +37,23 @@ export default function FilesPage() {
       fetchFiles();
     }
   }, [currentPath, initialized]);
+
+  useEffect(() => {
+    const searchFiles = () => {
+      if (!searchQuery.trim()) {
+        setFilteredFiles(files);
+        return;
+      }
+  
+      const query = searchQuery.toLowerCase();
+      const filtered = files.filter(file => 
+        file.name.toLowerCase().includes(query)
+      );
+      setFilteredFiles(filtered);
+    };
+  
+    searchFiles();
+  }, [searchQuery, files]);
 
   const fetchFiles = async () => {
     try {
@@ -51,6 +72,7 @@ export default function FilesPage() {
         const data = await response.json();
         const filesArray = Array.isArray(data.files) ? data.files : [];
         setFiles(filesArray);
+        setFilteredFiles(filesArray); // Add this line
       } else {
         console.error("Failed to fetch files:", response.statusText);
         setFiles([]);
@@ -220,6 +242,21 @@ export default function FilesPage() {
           </div>
         </div>
 
+
+                {/* Add Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search files and folders..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-4 py-2 pl-10 pr-4 text-gray-700 bg-white border rounded-lg focus:outline-none focus:border-blue-500"
+            />
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          </div>
+        </div>
+
         {/* Navigation Bar */}
         {currentPath && (
           <div className="flex items-center space-x-2 mb-4">
@@ -234,14 +271,14 @@ export default function FilesPage() {
         )}
 
         {/* Files Grid */}
-        {files.length === 0 ? (
+        {filteredFiles.length === 0 ? (
           <div className="text-center mt-8">
             <h2 className="text-xl text-gray-600">This folder is empty</h2>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {files.map((file, index) => (
-              <div
+              {filteredFiles.map((file, index) => (
+                <div
                 key={index}
                 className="relative bg-white shadow-lg rounded-lg flex flex-col h-full"
               >
