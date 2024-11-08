@@ -301,9 +301,9 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
         {/* Header Section */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Files</h1>
+            <h1 className="text-2xl font-bold text-white-800">Files</h1>
             {user && (
-              <p className="text-gray-600">Welcome, {user.firstName}!</p>
+              <p className="text-white">Welcome, {user.firstName}!</p>
             )}
           </div>
           <div className="space-x-4">
@@ -362,16 +362,16 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
 
         {/* Navigation Bar */}
         {currentPath && (
-          <div className="flex items-center space-x-2 mb-4">
-            <button
-              onClick={handleNavigateBack}
-              className="p-2 hover:bg-gray-100 rounded-full"
-            >
-              <FaArrowLeft className="text-gray-600" />
-            </button>
-            <span className="text-gray-600">Current path: {currentPath}</span>
-          </div>
-        )}
+  <div className="flex items-center space-x-2 mb-4">
+    <button
+      onClick={handleNavigateBack}
+      className="p-2 hover:bg-gray-700 rounded-full"
+    >
+      <FaArrowLeft className="text-white" /> {/* Changed from text-gray-600 */}
+    </button>
+    <span className="text-white">Current path: {currentPath}</span> {/* Changed from text-gray-600 */}
+  </div>
+)}
 
         {/* Files Grid */}
         {filteredFiles.length === 0 ? (
@@ -417,7 +417,7 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
     {new Date(file.lastModified).toLocaleString()}
   </p>
   {file.type !== "folder" && (
-    <p className="text-sm text-black-600">
+    <p className="text-sm text-black">
       Size: {formatFileSize(file.size)}
     </p>
   )}
@@ -459,8 +459,7 @@ const [itemToDelete, setItemToDelete] = useState<{ name: string; type: string; c
           </div>
         )}
 
-        {/* Modals */}
-{/* ... rest of your code remains the same until the modal ... */}
+    
 {/* Delete Confirmation Modal */}
 {showDeleteModal && itemToDelete && (
   <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
