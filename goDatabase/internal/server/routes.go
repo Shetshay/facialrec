@@ -1,10 +1,12 @@
 package server
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
@@ -61,6 +63,9 @@ func (s *Server) RegisterRoutes() *gin.Engine {
     r.POST("/api/deleteFile", s.deleteFileHandler)
 
     r.POST("/api/createFolder", s.createFolderHandler)
+
+    r.GET("/api/downloadFolderAsZip/:path", s.downloadFolderAsZip)
+
 
 
     return r
@@ -450,6 +455,86 @@ func (s *Server) authHandler(c *gin.Context) {
     }
 }
 
+// Add this handler to your routes.go file
+func (s *Server) downloadFolderAsZip(c *gin.Context) {
+    session, err := auth.Store.Get(c.Request, auth.SessionName)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+        return
+    }
+
+    userEmail, ok := session.Values["user_email"].(string)
+    if !ok {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+        return
+    }
+
+    bucketName, err := s.db.GetBucketNameByEmail(userEmail)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name", "details": err.Error()})
+        return
+    }
+
+    folderPath := c.Param("path")
+    folderPath, err = url.PathUnescape(folderPath)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid folder path"})
+        return
+    }
+    folderPath = filepath.Clean(folderPath)
+
+    zipFile, err := ioutil.TempFile("", "*.zip")
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create temporary file"})
+        return
+    }
+    defer zipFile.Close()
+    defer os.Remove(zipFile.Name())
+
+    zipWriter := zip.NewWriter(zipFile)
+    defer zipWriter.Close()
+
+    // List all objects in the folder
+    ctx := context.Background()
+    objectsCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
+        Prefix:    folderPath + "/",
+        Recursive: true,
+    })
+
+    for object := range objectsCh {
+        if object.Err != nil {
+            log.Printf("Error listing objects: %v", object.Err)
+            continue
+        }
+        
+        objectReader, err := s.minioClient.GetObject(ctx, bucketName, object.Key, minio.GetObjectOptions{})
+        if err != nil {
+            log.Printf("Error getting object: %v", err)
+            continue
+        }
+        defer objectReader.Close()
+
+        zipEntry, err := zipWriter.Create(object.Key)
+        if err != nil {
+            log.Printf("Error creating zip entry: %v", err)
+            continue
+        }
+
+        _, err = io.Copy(zipEntry, objectReader)
+        if err != nil {
+            log.Printf("Error copying object to zip: %v", err)
+        }
+    }
+
+    zipWriter.Close()
+
+    c.Header("Content-Disposition", "attachment; filename=\"folder.zip\"")
+    c.Header("Content-Type", "application/zip")
+    zipFile.Seek(0, 0)
+    io.Copy(c.Writer, zipFile)
+}
+
+
 
 
 func (s *Server) userCookieInfo(c *gin.Context) {
@@ -613,8 +698,10 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
         return
     }
 
-        // Decode URL-encoded file path
+    // Get file path from URL parameter
     filePath := c.Param("path")
+
+    // Decode URL-encoded file path
     objectName, err := url.PathUnescape(filePath)
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file path"})
@@ -623,8 +710,6 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
 
     // Clean the object name to prevent path traversal
     objectName = filepath.Clean(objectName)
-
-
 
     // Get object from MinIO
     object, err := s.minioClient.GetObject(context.Background(), bucketName, objectName, minio.GetObjectOptions{})
@@ -641,9 +726,13 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
         return
     }
 
-    // Set the headers for download
-    c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(objectName)))
-    c.Header("Content-Type", "application/octet-stream")
+    // Set the headers for streaming the file
+    contentType := "application/octet-stream"
+    if filepath.Ext(objectName) == ".pdf" {
+        contentType = "application/pdf"
+    }
+
+    c.Header("Content-Type", contentType)
     c.Header("Content-Length", fmt.Sprintf("%d", objectInfo.Size))
 
     // Stream the file to response
@@ -651,6 +740,7 @@ func (s *Server) downloadFileHandler(c *gin.Context) {
         log.Printf("Error streaming file: %v", err)
     }
 }
+
 
 func (s *Server) listBucket(c *gin.Context) {
     // Get the session

@@ -1,4 +1,3 @@
-// components/FilePreview.tsx
 import React, { useState } from "react";
 import {
   FaFile,
@@ -20,6 +19,7 @@ interface FilePreviewProps {
     size: number;
     contentType?: string;
     url?: string;
+    path?: string;
   };
   onClick?: () => void;
 }
@@ -28,38 +28,31 @@ const getFileType = (fileName: string): string => {
   const extension = fileName.split(".").pop()?.toLowerCase() || "";
 
   const fileTypes: { [key: string]: string } = {
-    // Images
     jpg: "image",
     jpeg: "image",
     png: "image",
     gif: "image",
     webp: "image",
-    // Documents
     pdf: "pdf",
     doc: "word",
     docx: "word",
     txt: "text",
     rtf: "text",
-    // Spreadsheets
     xls: "excel",
     xlsx: "excel",
     csv: "excel",
-    // Code
     js: "code",
     ts: "code",
     py: "code",
     html: "code",
     css: "code",
     json: "code",
-    // Audio
     mp3: "audio",
     wav: "audio",
     ogg: "audio",
-    // Video
     mp4: "video",
     webm: "video",
     mov: "video",
-    // Archives
     zip: "archive",
     rar: "archive",
     "7z": "archive",
@@ -77,7 +70,6 @@ const FileIcon = ({
   type: string;
   className?: string;
 }) => {
-  // First check if it's a folder
   const icons: { [key: string]: React.ReactElement } = {
     folder: (
       <svg
@@ -85,7 +77,7 @@ const FileIcon = ({
         className={className}
         viewBox="0 0 24 24"
         fill="currentColor"
-        style={{ color: "#9CA3AF" }} // Changed to grey (you can adjust the hex code for different shades)
+        style={{ color: "#9CA3AF" }}
       >
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
       </svg>
@@ -104,6 +96,7 @@ const FileIcon = ({
 
   return icons[type] || icons.generic;
 };
+
 const FilePreview: React.FC<FilePreviewProps> = ({ file, onClick }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const fileType = getFileType(file.name);
@@ -112,6 +105,36 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClick }) => {
   const handlePreviewClick = () => {
     setIsPreviewOpen(true);
     if (onClick) onClick();
+  };
+
+  const handleDownloadZipClick = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/downloadFolderAsZip/${encodeURIComponent(
+          file.path || file.name
+        )}`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) throw new Error("Download failed");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${file.name}.zip`; // Set the download filename
+      document.body.appendChild(a);
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Download ZIP error:", error);
+      alert("Failed to download ZIP. Please try again.");
+    }
   };
 
   const PreviewContent = () => {
@@ -126,7 +149,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClick }) => {
       return (
         <div className="relative group">
           <img
-            src={file.url || "/placeholder.png"} // Use the correct URL for images in subfolders
+            src={file.url || "/placeholder.png"}
             alt={file.name}
             className="w-full h-48 object-cover transition-all duration-300 filter group-hover:blur-none"
             style={{ backdropFilter: "blur(5px)" }}
@@ -160,7 +183,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClick }) => {
       {/* Preview Modal */}
       {isPreviewOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
-          <div className="bg-white rounded-lg p-4 max-w-4xl max-h-[90vh] overflow-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[95vh] overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">{file.name}</h3>
               <button
@@ -172,20 +195,36 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClick }) => {
             </div>
 
             <div className="preview-content">
-              {fileType === "image" && !previewError ? (
+              {file.type === "folder" ? (
+                <div className="flex flex-col items-center justify-center p-4">
+                  <FileIcon
+                    type="folder"
+                    className="w-32 h-32 text-gray-400 mb-4"
+                  />
+                  <p className="text-gray-600">
+                    Folders cannot be previewed directly.
+                  </p>
+                  <button
+                    onClick={handleDownloadZipClick}
+                    className="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                  >
+                    Download as ZIP
+                  </button>
+                </div>
+              ) : fileType === "image" && !previewError ? (
                 <img
                   src={file.url}
                   alt={file.name}
-                  className="max-w-full max-h-[70vh] object-contain"
+                  className="max-w-full max-h-[85vh] object-contain"
                 />
               ) : fileType === "pdf" ? (
                 <iframe
                   src={file.url}
-                  className="w-full h-[70vh]"
+                  className="w-full h-[85vh]"
                   title={file.name}
                 />
               ) : fileType === "video" ? (
-                <video controls className="max-w-full max-h-[70vh]">
+                <video controls className="w-full h-[85vh]">
                   <source src={file.url} type={file.contentType} />
                   Your browser does not support the video tag.
                 </video>

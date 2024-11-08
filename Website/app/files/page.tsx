@@ -2,13 +2,13 @@
 
 import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
-import { FaTimes, FaArrowLeft, FaSearch } from "react-icons/fa";
+import { FaTimes, FaArrowLeft, FaSearch, FaFileDownload } from "react-icons/fa";
 import FilePreview from "../components/FilePreview";
 import { useAuth } from "../Context/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function FilesPage() {
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null); // New state to store upload progress
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [files, setFiles] = useState<FileObject[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -21,13 +21,13 @@ export default function FilesPage() {
   const [filteredFiles, setFilteredFiles] = useState<FileObject[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [fileTypeFilter, setFileTypeFilter] = useState<string>("all");
-  // Add these with your other state declarations
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{
     name: string;
     type: string;
     count?: number;
   } | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null); // New state for download progress
 
   useEffect(() => {
     const initializePage = async () => {
@@ -150,7 +150,7 @@ export default function FilesPage() {
     };
 
     searchFilesRecursively();
-  }, [searchQuery, fileTypeFilter]);
+  }, [searchQuery, fileTypeFilter, files, currentPath]);
 
   const fetchFiles = async () => {
     try {
@@ -169,14 +169,16 @@ export default function FilesPage() {
         const data = await response.json();
         const filesArray = Array.isArray(data.files) ? data.files : [];
         setFiles(filesArray);
-        setFilteredFiles(filesArray); // Add this line
+        setFilteredFiles(filesArray);
       } else {
         console.error("Failed to fetch files:", response.statusText);
         setFiles([]);
+        setFilteredFiles([]);
       }
     } catch (error) {
       console.error("Error fetching files:", error);
       setFiles([]);
+      setFilteredFiles([]);
     }
   };
 
@@ -211,7 +213,6 @@ export default function FilesPage() {
     }
   };
 
-  // Add this new function to handle the actual deletion
   const performDelete = async (path: string, type: string) => {
     try {
       const deleteResponse = await fetch(
@@ -273,7 +274,7 @@ export default function FilesPage() {
           const percentComplete = Math.round(
             (event.loaded / event.total) * 100
           );
-          setUploadProgress(percentComplete); // Update the state with the current progress
+          setUploadProgress(percentComplete);
         }
       };
 
@@ -282,7 +283,7 @@ export default function FilesPage() {
           await fetchFiles();
           setShowUploadModal(false);
           setSelectedFiles(null);
-          setUploadProgress(null); // Reset progress after completion
+          setUploadProgress(null);
         } else {
           alert("Upload failed");
           setUploadProgress(null);
@@ -334,6 +335,62 @@ export default function FilesPage() {
     }
   };
 
+  const handleDownloadFolderAsZip = async (folderPath: string) => {
+    const encodedPath = encodeURIComponent(folderPath);
+    const downloadUrl = `http://localhost:3000/api/downloadFolderAsZip/${encodedPath}`;
+
+    try {
+      setDownloadProgress(0);
+      const response = await fetch(downloadUrl, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error("Download failed");
+
+      const contentLength = response.headers.get("Content-Length");
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
+      let loaded = 0;
+
+      const reader = response.body?.getReader();
+      const stream = new ReadableStream({
+        start(controller) {
+          const pump = () => {
+            reader?.read().then(({ done, value }) => {
+              if (done) {
+                controller.close();
+                return;
+              }
+              loaded += value.length;
+              if (total) {
+                const percent = Math.round((loaded / total) * 100);
+                setDownloadProgress(percent);
+              }
+              controller.enqueue(value);
+              pump();
+            });
+          };
+          pump();
+        },
+      });
+
+      const blob = await new Response(stream).blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${folderPath}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setDownloadProgress(null);
+    } catch (error) {
+      console.error("Error downloading folder as ZIP:", error);
+      alert("Failed to download folder as ZIP. Please try again.");
+      setDownloadProgress(null);
+    }
+  };
+
   return (
     <ProtectedRoute>
       <Layout>
@@ -366,7 +423,7 @@ export default function FilesPage() {
         </div>
 
         {/* Search and Filter Section */}
-        <div className="mb-6 flex gap-4">
+        <div className="mb-6 flex flex-col md:flex-row gap-4">
           <div className="relative flex-grow">
             <input
               type="text"
@@ -414,7 +471,7 @@ export default function FilesPage() {
             <h2 className="text-xl text-gray-600">This folder is empty</h2>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredFiles.map((file, index) => (
               <div
                 key={index}
@@ -458,9 +515,10 @@ export default function FilesPage() {
                     </p>
                   )}
                 </div>
-                {/* Download Button */}
-                {file.type !== "folder" && (
-                  <div className="p-4 bg-gray-50 border-t">
+
+                {/* Action Buttons */}
+                <div className="p-4 bg-gray-50 border-t flex space-x-2">
+                  {file.type !== "folder" && (
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
@@ -477,22 +535,13 @@ export default function FilesPage() {
 
                           if (!response.ok) throw new Error("Download failed");
 
-                          // Get the blob from the response
                           const blob = await response.blob();
-
-                          // Create a URL for the blob
                           const url = window.URL.createObjectURL(blob);
-
-                          // Create a temporary anchor element
                           const a = document.createElement("a");
                           a.href = url;
-                          a.download = file.name; // Set the download filename
+                          a.download = file.name;
                           document.body.appendChild(a);
-
-                          // Trigger the download
                           a.click();
-
-                          // Clean up
                           window.URL.revokeObjectURL(url);
                           document.body.removeChild(a);
                         } catch (error) {
@@ -500,13 +549,26 @@ export default function FilesPage() {
                           alert("Failed to download file. Please try again.");
                         }
                       }}
-                      className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                      className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                     >
                       Download
                     </button>
-                  </div>
-                )}
+                  )}
+                  {file.type === "folder" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadFolderAsZip(file.path || file.name);
+                      }}
+                      className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center"
+                    >
+                      <FaFileDownload className="mr-2" />
+                      Download ZIP
+                    </button>
+                  )}
+                </div>
 
+                {/* Edit Mode Delete Button */}
                 {editMode && (
                   <div className="absolute top-2 right-2">
                     <button
@@ -580,7 +642,6 @@ export default function FilesPage() {
                 onChange={(e) => setNewFolderName(e.target.value)}
                 placeholder="Folder name"
                 className="w-full p-2 border rounded mb-4 bg-white text-black ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-500"
-                style={{ color: "black" }}
                 autoFocus
               />
               <div className="flex justify-end space-x-4">
@@ -619,7 +680,7 @@ export default function FilesPage() {
               {uploadProgress !== null && (
                 <div className="w-full bg-gray-200 rounded-full h-6 mb-4">
                   <div
-                    className="bg-blue-500 h-6 rounded-full text-center text-white"
+                    className="bg-blue-500 h-6 rounded-full text-center text-white flex items-center justify-center"
                     style={{ width: `${uploadProgress}%` }}
                   >
                     {uploadProgress}%
@@ -632,7 +693,7 @@ export default function FilesPage() {
                   onClick={() => {
                     setShowUploadModal(false);
                     setSelectedFiles(null);
-                    setUploadProgress(null); // Reset progress when cancelled
+                    setUploadProgress(null);
                   }}
                   className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
                 >
@@ -641,11 +702,34 @@ export default function FilesPage() {
                 <button
                   onClick={handleUploadSubmit}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                  disabled={uploadProgress !== null} // Disable button when uploading
+                  disabled={uploadProgress !== null}
                 >
                   {uploadProgress !== null ? "Uploading..." : "Upload"}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Download Progress Modal */}
+        {downloadProgress !== null && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Downloading ZIP</h2>
+              <div className="w-full bg-gray-200 rounded-full h-6 mb-4">
+                <div
+                  className="bg-green-500 h-6 rounded-full text-center text-white flex items-center justify-center"
+                  style={{ width: `${downloadProgress}%` }}
+                >
+                  {downloadProgress}%
+                </div>
+              </div>
+              <button
+                onClick={() => setDownloadProgress(null)}
+                className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         )}
