@@ -2,7 +2,14 @@
 
 import Layout from "../components/Layout";
 import { useState, useEffect } from "react";
-import { FaTimes, FaArrowLeft, FaSearch, FaFileDownload } from "react-icons/fa";
+import {
+  FaTimes,
+  FaArrowLeft,
+  FaSearch,
+  FaFileDownload,
+  FaFolder,
+  FaFolderOpen,
+} from "react-icons/fa";
 import FilePreview from "../components/FilePreview";
 import { useAuth } from "../Context/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -15,6 +22,7 @@ export default function FilesPage() {
     "files" | "folder" | null
   >(null);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [uploadFolderName, setUploadFolderName] = useState("");
   const [initialized, setInitialized] = useState(false);
   const { user, isLoading } = useAuth();
   const [currentPath, setCurrentPath] = useState<string>("");
@@ -30,6 +38,19 @@ export default function FilesPage() {
     count?: number;
   } | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
+
+  // State variables for moving items
+  const [itemToMove, setItemToMove] = useState<{
+    name: string;
+    type: string;
+    path: string;
+  } | null>(null);
+  const [destinationPath, setDestinationPath] = useState<string>("");
+  const [showMoveModal, setShowMoveModal] = useState<boolean>(false);
+  const [folderStructure, setFolderStructure] = useState<FolderNode | null>(
+    null
+  );
+  const [selectedFolder, setSelectedFolder] = useState<string>("");
 
   useEffect(() => {
     const initializePage = async () => {
@@ -261,11 +282,25 @@ export default function FilesPage() {
     }
 
     const formData = new FormData();
+
+    let basePath = currentPath;
+    if (uploadModalType === "files" && uploadFolderName.trim()) {
+      basePath = basePath
+        ? `${basePath}/${uploadFolderName.trim()}`
+        : uploadFolderName.trim();
+    }
+
     Array.from(selectedFiles).forEach((file) => {
-      const relativePath = (file as any).webkitRelativePath || file.name;
-      formData.append("files", file, relativePath);
+      const relativePath =
+        uploadModalType === "folder"
+          ? (file as any).webkitRelativePath || file.name
+          : file.name;
+
+      const fullPath = relativePath;
+
+      formData.append("files", file, fullPath);
     });
-    formData.append("path", currentPath);
+    formData.append("path", basePath);
 
     try {
       const xhr = new XMLHttpRequest();
@@ -287,6 +322,7 @@ export default function FilesPage() {
           setUploadModalType(null);
           setSelectedFiles(null);
           setUploadProgress(null);
+          setUploadFolderName("");
         } else {
           alert("Upload failed");
           setUploadProgress(null);
@@ -392,6 +428,110 @@ export default function FilesPage() {
       alert("Failed to download folder as ZIP. Please try again.");
       setDownloadProgress(null);
     }
+  };
+
+  const handleMoveItem = async () => {
+    if (!itemToMove) return;
+
+    try {
+      const response = await fetch("http://localhost:3000/api/moveFile", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sourcePath: itemToMove.path,
+          destinationPath: selectedFolder,
+          type: itemToMove.type,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchFiles();
+        setShowMoveModal(false);
+        setItemToMove(null);
+        setSelectedFolder("");
+        setFolderStructure(null);
+      } else {
+        const data = await response.json();
+        alert(`Failed to move item: ${data.message || response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error moving item:", error);
+      alert("Failed to move item. Please try again.");
+    }
+  };
+
+  const fetchFolderStructure = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/listBucket`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const rootNode: FolderNode = {
+          name: "",
+          path: "",
+          children: [],
+        };
+        await buildFolderTree(rootNode, "");
+        setFolderStructure(rootNode);
+      }
+    } catch (error) {
+      console.error("Error fetching folder structure:", error);
+    }
+  };
+
+  const buildFolderTree = async (node: FolderNode, path: string) => {
+    const queryPath = path ? `?path=${encodeURIComponent(path)}` : "";
+    const response = await fetch(
+      `http://localhost:3000/api/listBucket${queryPath}`,
+      {
+        method: "GET",
+        credentials: "include",
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const filesArray = Array.isArray(data.files) ? data.files : [];
+
+      for (const file of filesArray) {
+        if (file.type === "folder") {
+          const childNode: FolderNode = {
+            name: file.name,
+            path: path ? `${path}/${file.name}` : file.name,
+            children: [],
+          };
+          node.children.push(childNode);
+          await buildFolderTree(childNode, childNode.path);
+        }
+      }
+    }
+  };
+
+  const renderFolderTree = (node: FolderNode) => {
+    return (
+      <ul className="ml-4">
+        {node.children.map((child) => (
+          <li key={child.path}>
+            <div
+              className={`flex items-center cursor-pointer ${
+                selectedFolder === child.path ? "text-blue-500" : ""
+              }`}
+              onClick={() => setSelectedFolder(child.path)}
+            >
+              {child.children.length > 0 ? <FaFolderOpen /> : <FaFolder />}
+              <span className="ml-2">{child.name}</span>
+            </div>
+            {child.children.length > 0 && renderFolderTree(child)}
+          </li>
+        ))}
+      </ul>
+    );
   };
 
   return (
@@ -575,6 +715,23 @@ export default function FilesPage() {
                       Download ZIP
                     </button>
                   )}
+                  {/* Add Move button */}
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setItemToMove({
+                        name: file.name,
+                        type: file.type,
+                        path: file.path || file.name,
+                      });
+                      setShowMoveModal(true);
+                      setSelectedFolder("");
+                      await fetchFolderStructure();
+                    }}
+                    className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                  >
+                    Move
+                  </button>
                 </div>
 
                 {/* Edit Mode Delete Button */}
@@ -681,6 +838,17 @@ export default function FilesPage() {
               <h2 className="text-xl font-bold mb-4">
                 {uploadModalType === "files" ? "Upload Files" : "Upload Folder"}
               </h2>
+
+              {uploadModalType === "files" && (
+                <input
+                  type="text"
+                  value={uploadFolderName}
+                  onChange={(e) => setUploadFolderName(e.target.value)}
+                  placeholder="Folder name (optional)"
+                  className="w-full p-2 border rounded mb-4 bg-white text-black ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              )}
+
               <input
                 type="file"
                 multiple
@@ -708,6 +876,7 @@ export default function FilesPage() {
                     setUploadModalType(null);
                     setSelectedFiles(null);
                     setUploadProgress(null);
+                    setUploadFolderName("");
                   }}
                   className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
                 >
@@ -747,6 +916,52 @@ export default function FilesPage() {
             </div>
           </div>
         )}
+
+        {/* Move Item Modal with Folder Picker */}
+        {showMoveModal && itemToMove && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-screen overflow-y-auto">
+              <h2 className="text-xl font-bold mb-4">
+                Move {itemToMove.type === "folder" ? "Folder" : "File"}
+              </h2>
+              <p className="text-gray-600 mb-4">
+                Select the destination folder to move "{itemToMove.name}" to.
+              </p>
+              <div className="border p-2 rounded mb-4">
+                <div
+                  className={`flex items-center cursor-pointer ${
+                    selectedFolder === "" ? "text-blue-500" : ""
+                  }`}
+                  onClick={() => setSelectedFolder("")}
+                >
+                  <FaFolderOpen />
+                  <span className="ml-2">Root</span>
+                </div>
+                {folderStructure && renderFolderTree(folderStructure)}
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => {
+                    setShowMoveModal(false);
+                    setItemToMove(null);
+                    setSelectedFolder("");
+                    setFolderStructure(null);
+                  }}
+                  className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMoveItem}
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
+                  disabled={!itemToMove || selectedFolder === null}
+                >
+                  Move
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </Layout>
     </ProtectedRoute>
   );
@@ -760,6 +975,12 @@ interface FileObject {
   type: "file" | "folder";
   path?: string;
   contentType?: string;
+}
+
+interface FolderNode {
+  name: string;
+  path: string;
+  children: FolderNode[];
 }
 
 function formatFileSize(bytes: number): string {
