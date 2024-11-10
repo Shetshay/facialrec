@@ -29,7 +29,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-        <h2 className="text-xl font-bold mb-4">
+        <h2 className="text-xl text-black font-bold mb-4">
           {uploadModalType === "files" ? "Upload Files" : "Upload Folder"}
         </h2>
 
@@ -72,7 +72,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
               setUploadProgress(null);
               setUploadFolderName("");
             }}
-            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-1000"
           >
             Cancel
           </button>

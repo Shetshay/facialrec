@@ -54,7 +54,7 @@ const MoveItemModal: React.FC<MoveItemModalProps> = ({
         <div className="flex justify-end space-x-4">
           <button
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-black-400"
           >
             Cancel
           </button>

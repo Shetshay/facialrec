@@ -1,75 +1,81 @@
 // app/components/Layout.tsx
-"use client"; // Marks this as a client component for interactive use
+"use client";
 import Head from "next/head";
-import Sidebar from "./Sidebar"; // Import Sidebar component
+import Sidebar from "./Sidebar";
 import { ReactNode, useState } from "react";
-import { getTextColorForBackground } from "../utils/getTextColorForBackground"; // Correct import for utility function
 
 interface LayoutProps {
-    children: ReactNode; // Allows any React nodes to be passed as children
+  children: ReactNode;
 }
 
-// Define themes for day (light mode) and night (dark mode)
 const dayTheme = {
-    layoutBg: '#f0f0f0', // Hex color for light mode
-    contentBg: '#ffffff',
-    sidebarBg: '#e0e0e0',
+  layoutBg: "#f0f0f0",
+  contentBg: "#ffffff",
+  sidebarBg: "#e0e0e0",
+  layoutTextColor: "#000000",
+  contentTextColor: "#000000",
+  sidebarTextColor: "#000000",
+  toggleBtnBg: "#000000",
+  toggleBtnText: "#ffffff",
+  hoverBg: "#d0d0d0",
 };
 
 const nightTheme = {
-    layoutBg: '#1a202c', // Hex color for dark mode
-    contentBg: '#2d3748',
-    sidebarBg: '#2d3748',
+  layoutBg: "#1a202c",
+  contentBg: "#2d3748",
+  sidebarBg: "#2d3748",
+  layoutTextColor: "#ffffff",
+  contentTextColor: "#ffffff",
+  sidebarTextColor: "#ffffff",
+  toggleBtnBg: "#ffffff",
+  toggleBtnText: "#000000",
+  hoverBg: "#3b4758",
 };
 
 export default function Layout({ children }: LayoutProps) {
+  const [isNightMode, setIsNightMode] = useState(true);
 
-    const [isNightMode, setIsNightMode] = useState(true); // Manage day/night mode state
+  const navItems = [
+    { label: "User", href: "/user" },
+    { label: "Files", href: "/files" },
+    {
+      label: "Logout",
+      onClick: () => (window.location.href = "http://localhost:3000/api/logout/google"),
+    },
+  ];
 
-    const navItems = [
-        { label: "User", href: "/user" },
-        { label: "Files", href: "/files" },
-        { label: "Logout", href: "http://localhost:3000/api/logout/google" }
-    ];
+  const toggleTheme = () => {
+    setIsNightMode(!isNightMode);
+  };
 
-    // Function to toggle between day and night modes
-    const toggleTheme = () => {
-        setIsNightMode(!isNightMode);
-    };
+  const theme = isNightMode ? nightTheme : dayTheme;
 
-    // Determine current theme
-    const theme = isNightMode ? nightTheme : dayTheme;
+  return (
+    <>
+      <Head>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
 
-    // Determine text color based on background brightness
-    const layoutTextColor = getTextColorForBackground(theme.layoutBg);
-    const contentTextColor = getTextColorForBackground(theme.contentBg);
+      <div
+        className="relative min-h-screen"
+        style={{ backgroundColor: theme.layoutBg, color: theme.layoutTextColor }}
+      >
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-blue-500 to-purple-500 opacity-50"></div>
 
-    return (
-        <>
-            <Head>
-                <link rel="icon" href="/favicon.ico" />
-            </Head>
+        <Sidebar
+          navItems={navItems}
+          isNightMode={isNightMode}
+          toggleTheme={toggleTheme}
+          theme={theme}
+        />
 
-            {/* Container for background layer */}
-            <div className={`relative min-h-screen ${layoutTextColor}`} style={{ backgroundColor: theme.layoutBg }}>
-                {/* Background layer beneath sidebar */}
-                <div className="absolute inset-0 z-0 bg-gradient-to-br from-blue-500 to-purple-500 opacity-50">
-                    {/* This is the background layer behind the sidebar */}
-                </div>
-
-                {/* Sidebar - Fixed position so it floats on top */}
-                <Sidebar
-                    navItems={navItems}
-                    isNightMode={isNightMode}
-                    toggleTheme={toggleTheme} // Keep the night mode toggle functional
-                    theme={theme} // Pass the current theme to the sidebar
-                />
-
-                {/* Main content area */}
-                <main className={`relative flex-1 p-6 ml-64  shadow-lg z-10 ${contentTextColor}`} style={{ backgroundColor: theme.contentBg }}>
-                    {children} {/* Render the children components inside the main content area */}
-                </main>
-            </div>
-        </>
-    );
+        <main
+          className="relative flex-1 p-6 ml-64 shadow-lg z-10"
+          style={{ backgroundColor: theme.contentBg, color: theme.contentTextColor }}
+        >
+          {children}
+        </main>
+      </div>
+    </>
+  );
 }

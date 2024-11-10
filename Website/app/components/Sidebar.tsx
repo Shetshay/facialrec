@@ -1,97 +1,118 @@
 // app/components/Sidebar.tsx
-"use client"; // Client component for interactive functionality
+"use client";
 
 import Link from "next/link";
 import { useState } from "react";
-import { Bars3Icon, XMarkIcon, SunIcon, MoonIcon } from "@heroicons/react/24/outline"; // Icons for open, close, day, and night actions
-import { getTextColorForBackground } from "../utils/getTextColorForBackground"; // Correct import for utility function
+import { Bars3Icon, XMarkIcon, SunIcon, MoonIcon } from "@heroicons/react/24/outline";
 
 type NavItem = {
-    label: string;
-    href?: string;
-    onClick?: () => void;
+  label: string;
+  href?: string;
+  onClick?: () => void;
 };
 
 interface SidebarProps {
-    navItems: NavItem[];
-    isNightMode: boolean; // Receive theme state from Layout
-    toggleTheme: () => void; // Receive toggle function from Layout
-    theme: {
-        sidebarBg: string;
-    };
+  navItems: NavItem[];
+  isNightMode: boolean;
+  toggleTheme: () => void;
+  theme: {
+    sidebarBg: string;
+    sidebarTextColor: string;
+    toggleBtnBg: string;
+    toggleBtnText: string;
+    hoverBg: string;
+  };
 }
 
 export default function Sidebar({ navItems, isNightMode, toggleTheme, theme }: SidebarProps) {
-    const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-    const toggleSidebar = () => {
-        setIsOpen(!isOpen); // Sidebar open/close toggle remains independent of theme toggle
-    };
+  const toggleSidebar = () => {
+    setIsOpen(!isOpen);
+  };
 
-    // Determine text color for the sidebar based on background brightness
-    const sidebarTextColor = getTextColorForBackground(theme.sidebarBg);
+  return (
+    <div>
+      {!isOpen && (
+        <button
+          onClick={toggleSidebar}
+          className="p-2 fixed top-4 left-4 z-20 rounded-md hover:bg-opacity-80"
+          style={{ backgroundColor: theme.sidebarBg, color: theme.sidebarTextColor }}
+        >
+          <Bars3Icon className="h-6 w-6" />
+        </button>
+      )}
 
-    return (
-        <div>
-            {!isOpen && (
-                <button
+      <div
+        className={`fixed top-0 left-0 h-full w-64 transform ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        } transition-transform duration-300 ease-in-out z-20 flex flex-col justify-between`}
+        style={{ backgroundColor: theme.sidebarBg, color: theme.sidebarTextColor }}
+      >
+        <button
+          onClick={toggleSidebar}
+          className="p-2 absolute top-4 right-4 z-20 rounded-md hover:bg-opacity-80"
+          style={{ color: theme.sidebarTextColor }}
+        >
+          <XMarkIcon className="h-6 w-6" />
+        </button>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 p-4 pt-16 space-y-2">
+          <ul>
+            {navItems.map((item, index) => (
+              <li key={index} className="list-none">
+                {item.href ? (
+                  <Link
+                    href={item.href}
+                    className={`block p-2 rounded ${
+                      isNightMode ? "hover:bg-gray-700" : "hover:bg-gray-300"
+                    }`}
+                    style={{ color: theme.sidebarTextColor }}
                     onClick={toggleSidebar}
-                    className={`p-2 fixed top-4 left-4 z-20 ${sidebarTextColor} rounded-md hover:bg-opacity-80`}
-                    style={{ backgroundColor: theme.sidebarBg }}
-                >
-                    <Bars3Icon className="h-6 w-6" />
-                </button>
-            )}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => {
+                      item.onClick && item.onClick();
+                      toggleSidebar();
+                    }}
+                    className={`block p-2 w-full text-left rounded ${
+                      isNightMode ? "hover:bg-gray-700" : "hover:bg-gray-300"
+                    }`}
+                    style={{ color: theme.sidebarTextColor }}
+                  >
+                    {item.label}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-            <div
-                className={`fixed top-0 left-0 h-full w-64 ${sidebarTextColor}
-transform ${isOpen ? "translate-x-0" : "-translate-x-full"}
-transition-transform duration-300 ease-in-out z-20 flex flex-col justify-between`}
-                style={{ backgroundColor: theme.sidebarBg }}
-            >
-                <button
-                    onClick={toggleSidebar}
-                    className={`p-2 absolute top-4 right-4 z-20 ${sidebarTextColor} rounded-md hover:bg-opacity-80`}
-                >
-                    <XMarkIcon className="h-6 w-6" />
-                </button>
-
-
-                {/* edit this for logout button and onclick activities */}
-                <nav className="flex-1 p-4 pt-16 space-y-2">
-                    <ul>
-                        {navItems.map((item, index) => (
-                            <li key={index} className="list-none">
-                                {item.href ? (
-                                    <Link href={item.href} className={`block p-2 rounded hover:bg-gray-700 ${sidebarTextColor}`}>
-                                        {item.label}
-                                    </Link>
-                                ) : (
-                                        <button
-                                            onClick={item.onClick}
-                                            className={`block p-2 rounded hover:bg-gray-700 ${sidebarTextColor}`}
-                                        >
-                                            {item.label}
-                                        </button>
-                                    )}
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
-
-
-                {/* Add Theme Toggle Button */}
-                <div className={`relative py-4 flex items-center justify-between ${theme.sidebarBg}`}>
-                    <h1 className={`text-center text-lg font-bold flex-grow ${sidebarTextColor}`}>Navigation</h1>
-                    <button
-                        onClick={toggleTheme} // Keep this to toggle between day and night modes
-                        className={`absolute bottom-4 right-4 p-2 rounded-full ${theme.sidebarBg} ${sidebarTextColor} hover:bg-opacity-80`}
-                        title={isNightMode ? 'Switch to Day Mode' : 'Switch to Night Mode'}
-                    >
-                        {isNightMode ? <SunIcon className="h-6 w-6" /> : <MoonIcon className="h-6 w-6" />}
-                    </button>
-                </div>
-            </div>
+        {/* Theme Toggle Button */}
+        <div
+          className="relative py-4 flex items-center justify-between"
+          style={{ backgroundColor: theme.sidebarBg }}
+        >
+          <h1
+            className="text-center text-lg font-bold flex-grow"
+            style={{ color: theme.sidebarTextColor }}
+          >
+            Navigation
+          </h1>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full mr-4 hover:bg-opacity-80"
+            title={isNightMode ? "Switch to Day Mode" : "Switch to Night Mode"}
+            style={{ backgroundColor: theme.toggleBtnBg, color: theme.toggleBtnText }}
+          >
+            {isNightMode ? <SunIcon className="h-6 w-6" /> : <MoonIcon className="h-6 w-6" />}
+          </button>
         </div>
-    );
+      </div>
+    </div>
+  );
 }

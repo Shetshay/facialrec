@@ -20,7 +20,7 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0 mb-6 w-full">
       <div className="w-full md:w-auto">
         <h1 className="text-2xl font-bold text-white-800">Files</h1>
-        {user && <p className="text-white">Welcome, {user.firstName}!</p>}
+        {user && <p className="">Welcome, {user.firstName}!</p>}
       </div>
       
       <div className="flex flex-wrap gap-2 w-full md:w-auto">

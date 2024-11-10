@@ -21,7 +21,7 @@ const NewFolderModal: React.FC<NewFolderModalProps> = ({
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Create New Folder</h2>
+        <h2 className="text-xl font-bold mb-4 text-black">Create New Folder</h2>
         <input
           type="text"
           value={newFolderName}
@@ -33,7 +33,7 @@ const NewFolderModal: React.FC<NewFolderModalProps> = ({
         <div className="flex justify-end space-x-4">
           <button
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-gray-400"
           >
             Cancel
           </button>
