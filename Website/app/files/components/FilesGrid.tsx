@@ -1,4 +1,4 @@
-// /files/components/FilesGrid.tsx
+// FilesGrid.tsx
 import React from 'react';
 import FilePreview from "../../components/FilePreview";
 import { FaFileDownload, FaFolderOpen, FaFolder, FaTimes } from "react-icons/fa";
@@ -51,54 +51,68 @@ const FilesGrid: React.FC<FilesGridProps> = ({
       <h2 className="text-xl text-gray-600">This folder is empty</h2>
     </div>
   ) : (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {files.map((file, index) => (
         <div
           key={index}
-          className="relative bg-white shadow-lg rounded-lg flex flex-col h-full"
+          className="relative bg-white shadow-lg rounded-lg flex flex-col min-h-[300px] max-w-full overflow-hidden"
         >
-          <FilePreview
-            file={{
-              name: file.name,
-              type: file.type,
-              size: file.size,
-              contentType: file.contentType,
-              url:
-                file.type === "file"
-                  ? `http://localhost:3000/api/downloadFile/${encodeURIComponent(
-                      file.path || file.name
-                    )}`
-                  : undefined,
-            }}
-            onClick={() =>
-              file.type === "folder" &&
-              handleNavigateToFolder(file.path || file.name)
-            }
-          />
+          <div className="relative flex-shrink-0">
+            <FilePreview
+              file={{
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                contentType: file.contentType,
+                url:
+                  file.type === "file"
+                    ? `http://localhost:3000/api/downloadFile/${encodeURIComponent(
+                        file.path || file.name
+                      )}`
+                    : undefined,
+              }}
+              onClick={() =>
+                file.type === "folder" &&
+                handleNavigateToFolder(file.path || file.name)
+              }
+            />
+            
+            {/* Edit Mode Delete Button */}
+            {editMode && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteItem(file.name, file.type);
+                }}
+                className="absolute top-2 right-2 bg-white border-2 border-red-500 rounded-full p-1 hover:bg-red-50 shadow-md"
+              >
+                <FaTimes className="text-red-500" />
+              </button>
+            )}
+          </div>
 
-          <div className="p-4 flex-grow">
-            <h3 className="text-lg font-bold text-gray-800 break-words">
+          <div className="p-3 flex-grow overflow-auto">
+            <h3 className="text-base font-bold text-gray-800 break-words truncate">
               {file.name}
             </h3>
             {file.path && (
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1 break-words truncate">
                 Path: {file.path}
               </p>
             )}
-            <p className="text-sm text-gray-600">
-              Last Modified:{" "}
-              {new Date(file.lastModified).toLocaleString()}
+            <p className="text-xs text-gray-600 mt-1">
+              Last Modified: {new Date(file.lastModified).toLocaleString()}
             </p>
             {file.type !== "folder" && (
-              <p className="text-sm text-black">
+              <p className="text-xs text-black mt-1">
                 Size: {formatFileSize(file.size)}
               </p>
             )}
           </div>
 
           {/* Action Buttons */}
-          <div className="p-4 bg-gray-50 border-t flex space-x-2">
-            {file.type !== "folder" && (
+          <div className="p-2 bg-gray-50 border-t flex flex-wrap gap-2">
+            {file.type !== "folder" ? (
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -129,20 +143,20 @@ const FilesGrid: React.FC<FilesGridProps> = ({
                     alert("Failed to download file. Please try again.");
                   }
                 }}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="flex-1 min-w-[120px] px-3 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center"
               >
+                <FaFileDownload className="mr-1" />
                 Download
               </button>
-            )}
-            {file.type === "folder" && (
+            ) : (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDownloadFolderAsZip(file.path || file.name);
                 }}
-                className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center"
+                className="flex-1 min-w-[120px] px-3 py-1.5 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center"
               >
-                <FaFileDownload className="mr-2" />
+                <FaFileDownload className="mr-1" />
                 Download ZIP
               </button>
             )}
@@ -157,26 +171,11 @@ const FilesGrid: React.FC<FilesGridProps> = ({
                 setShowMoveModal(true);
                 await fetchFolderStructure();
               }}
-              className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+              className="flex-1 min-w-[80px] px-3 py-1.5 bg-yellow-500 text-white text-sm rounded-lg hover:bg-yellow-600 transition-colors flex items-center justify-center"
             >
               Move
             </button>
           </div>
-
-          {/* Edit Mode Delete Button */}
-          {editMode && (
-            <div className="absolute top-2 right-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteItem(file.name, file.type);
-                }}
-                className="bg-white border-2 border-red-500 rounded-full p-1 hover:bg-red-50"
-              >
-                <FaTimes className="text-red-500" />
-              </button>
-            </div>
-          )}
         </div>
       ))}
     </div>

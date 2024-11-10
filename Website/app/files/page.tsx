@@ -16,10 +16,11 @@ import NewFolderModal from "./components/Modals/NewFolderModal";
 import UploadModal from "./components/Modals/UploadModal";
 import DownloadProgressModal from "./components/Modals/DownloadProgressModal";
 import MoveItemModal from "./components/Modals/MoveItemModal";
+import UploadConfirmationModal from "./components/Modals/UploadConfirmationModal"; // Imported the UploadConfirmationModal
 
 // Import utility functions and interfaces
-import { FileObject, FolderNode } from "./utils/types"; // Changed from 'helper.ts' to 'types'
-import { formatFileSize } from "./utils/helpers"; // Ensure the file 'helpers.ts' exists
+import { FileObject, FolderNode } from "./utils/types"; // Ensure 'types.ts' exists in 'utils' directory
+import { formatFileSize } from "./utils/helpers"; // Ensure 'helpers.ts' exists in 'utils' directory
 
 // Import necessary icons
 import { FaFolderOpen, FaFolder } from "react-icons/fa";
@@ -48,6 +49,7 @@ export default function FilesPage() {
   } | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   const [showMoveModal, setShowMoveModal] = useState<boolean>(false);
+  const [showUploadConfirmation, setShowUploadConfirmation] = useState<boolean>(false); // Added state for upload confirmation
 
   // State variables for moving items
   const [itemToMove, setItemToMove] = useState<{
@@ -283,12 +285,20 @@ export default function FilesPage() {
     setCurrentPath(newPath);
   };
 
-  const handleUploadSubmit = async () => {
+  // Updated handleUploadSubmit function
+  const handleUploadSubmit = async (confirmed: boolean = false) => {
     if (!selectedFiles?.length) {
       alert("Please select at least one file to upload.");
       return;
     }
 
+    // Check if the number of files exceeds 15 and confirmation hasn't been shown
+    if (selectedFiles.length > 15 && !confirmed) {
+      setShowUploadConfirmation(true);
+      return;
+    }
+
+    // Proceed with the upload
     const formData = new FormData();
 
     let basePath = currentPath;
@@ -541,7 +551,7 @@ export default function FilesPage() {
       </ul>
     );
   };
-  
+
   return (
     <ProtectedRoute>
       <Layout>
@@ -641,6 +651,23 @@ export default function FilesPage() {
           selectedFolder={selectedFolder}
           setSelectedFolder={setSelectedFolder}
           renderFolderTree={renderFolderTree}
+        />
+
+        {/* Upload Confirmation Modal */}
+        <UploadConfirmationModal
+          show={showUploadConfirmation}
+          onConfirm={async () => {
+            setShowUploadConfirmation(false);
+            // Proceed with the upload
+            await handleUploadSubmit(true);
+          }}
+          onCancel={() => {
+            setShowUploadConfirmation(false);
+            // Optionally reset the upload modal if desired
+            // setUploadModalType(null);
+            // setSelectedFiles(null);
+          }}
+          fileCount={selectedFiles ? selectedFiles.length : 0}
         />
       </Layout>
     </ProtectedRoute>

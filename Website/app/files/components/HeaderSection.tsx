@@ -39,14 +39,14 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
         </button>
         
         <button
-          onClick={() => setUploadModalType("files")}
+          onClick={() => setUploadModalType("folder")} // Changed from "files" to "folder"
           className="flex-1 md:flex-none px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap min-w-[120px]"
         >
           Upload Folder
         </button>
         
         <button
-          onClick={() => setUploadModalType("folder")}
+          onClick={() => setUploadModalType("files")} // Changed from "folder" to "files"
           className="flex-1 md:flex-none px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 whitespace-nowrap min-w-[120px]"
         >
           Upload File
