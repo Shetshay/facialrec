@@ -13,7 +13,7 @@ export default function HomeLayout({ children }: HomeLayoutProps) {
         <div className="relative min-h-screen overflow-hidden home-layout-container select-none">
             <video
                 className="absolute top-0 left-0 w-full h-full object-cover -z-10"
-                src="/background-video.mp4"
+                // src="/background-video.mp4"
                 autoPlay
                 loop
                 muted

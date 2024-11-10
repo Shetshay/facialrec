@@ -66,7 +66,7 @@ export default function Layout({ children }: LayoutProps) {
                 />
 
                 {/* Main content area */}
-                <main className={`relative flex-1 p-6 ml-64 rounded-lg shadow-lg z-10 ${contentTextColor}`} style={{ backgroundColor: theme.contentBg }}>
+                <main className={`relative flex-1 p-6 ml-64  shadow-lg z-10 ${contentTextColor}`} style={{ backgroundColor: theme.contentBg }}>
                     {children} {/* Render the children components inside the main content area */}
                 </main>
             </div>
