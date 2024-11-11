@@ -253,7 +253,7 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 		}
 	} else {
 		// Add user to the database
-		internalUserID, err = s.db.AddUser(user.FirstName, user.LastName, userEmail, user.AccessToken, user.UserID)
+		internalUserID, err = s.db.AddUser(user.FirstName, user.LastName, userEmail, user.AccessToken, user.UserID, user.AvatarURL)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to database", "details": err.Error()})
 			return

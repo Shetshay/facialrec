@@ -4,21 +4,16 @@ import Image from "next/image";
 import { useAuth } from "../Context/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { useEffect, useState } from "react";
-import dynamic from 'next/dynamic';
-import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-} from 'chart.js';
+import dynamic from "next/dynamic";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 
 // Register chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend);
+// ChartJS.register(ArcElement, Tooltip, Legend);
 
 // Dynamically import the Pie component
-const Pie = dynamic(() => import('react-chartjs-2').then((mod) => mod.Pie), {
-  ssr: false,
-});
+// const Pie = dynamic(() => import('react-chartjs-2').then((mod) => mod.Pie), {
+//   ssr: false,
+// });
 
 interface FileObject {
   name: string;
@@ -47,6 +42,7 @@ export default function UserPage() {
     percentageUsed: 0,
     fileTypeDistribution: [],
   });
+  const [imageError, setImageError] = useState(false);
   const [files, setFiles] = useState<FileObject[]>([]);
 
   const calculateStorageStats = (files: FileObject[]) => {
@@ -57,8 +53,10 @@ export default function UserPage() {
       if (file.type === "folder") return "Folders";
 
       const extension = file.name.split(".").pop()?.toLowerCase() || "";
-      if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(extension)) return "Images";
-      if (["pdf", "doc", "docx", "txt", "rtf"].includes(extension)) return "Documents";
+      if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(extension))
+        return "Images";
+      if (["pdf", "doc", "docx", "txt", "rtf"].includes(extension))
+        return "Documents";
       if (["mp4", "avi", "mov", "wmv"].includes(extension)) return "Videos";
       if (["mp3", "wav", "ogg"].includes(extension)) return "Audio";
       if (["zip", "rar", "7z"].includes(extension)) return "Archives";
@@ -81,14 +79,16 @@ export default function UserPage() {
     }));
 
     // Debug logs
-    console.log('Total size in bytes:', totalSize);
-    console.log('Total size in MB:', totalSize / (1024 * 1024));
-    console.log('Distribution:', distribution);
+    console.log("Total size in bytes:", totalSize);
+    console.log("Total size in MB:", totalSize / (1024 * 1024));
+    console.log("Distribution:", distribution);
 
     return {
       usedStorage: Number((totalSize / (1024 * 1024)).toFixed(2)), // Convert to MB and fix decimal places
       totalStorage: 1000, // 1GB limit in MB
-      percentageUsed: Number(((totalSize / (1024 * 1024 * 1024)) * 100).toFixed(2)), // Convert to percentage with 2 decimal places
+      percentageUsed: Number(
+        ((totalSize / (1024 * 1024 * 1024)) * 100).toFixed(2)
+      ), // Convert to percentage with 2 decimal places
       fileTypeDistribution: distribution,
     };
   };
@@ -107,7 +107,7 @@ export default function UserPage() {
       if (response.ok) {
         const data = await response.json();
         const filesArray = Array.isArray(data.files) ? data.files : [];
-        console.log('Files fetched:', filesArray);
+        console.log("Files fetched:", filesArray);
         let allFiles: FileObject[] = [...filesArray];
 
         // Recursively get files from subfolders
@@ -133,7 +133,7 @@ export default function UserPage() {
       const allFiles = await fetchAllFiles();
       setFiles(allFiles);
       const stats = calculateStorageStats(allFiles);
-      console.log('Storage Stats:', stats);
+      console.log("Storage Stats:", stats);
       setStorageStats(stats);
     };
 
@@ -149,7 +149,7 @@ export default function UserPage() {
     );
     const data = storageStats.fileTypeDistribution.map((item) => item.size);
 
-    console.log('Chart Data:', {
+    console.log("Chart Data:", {
       labels,
       data,
       total: data.reduce((a, b) => a + b, 0),
@@ -159,15 +159,31 @@ export default function UserPage() {
       labels,
       datasets: [
         {
-          label: 'Storage Usage',
+          label: "Storage Usage",
           data,
           backgroundColor: [
-            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-            '#FF9F40', '#8E44AD', '#2ECC71', '#E74C3C', '#3498DB',
+            "#FF6384",
+            "#36A2EB",
+            "#FFCE56",
+            "#4BC0C0",
+            "#9966FF",
+            "#FF9F40",
+            "#8E44AD",
+            "#2ECC71",
+            "#E74C3C",
+            "#3498DB",
           ],
           hoverBackgroundColor: [
-            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-            '#FF9F40', '#8E44AD', '#2ECC71', '#E74C3C', '#3498DB',
+            "#FF6384",
+            "#36A2EB",
+            "#FFCE56",
+            "#4BC0C0",
+            "#9966FF",
+            "#FF9F40",
+            "#8E44AD",
+            "#2ECC71",
+            "#E74C3C",
+            "#3498DB",
           ],
         },
       ],
@@ -175,9 +191,9 @@ export default function UserPage() {
   };
 
   const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
   };
@@ -191,13 +207,19 @@ export default function UserPage() {
           {/* User Info Box */}
           <div className="w-full bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center space-x-4">
-              <Image
-                src="/stock.jpg"
-                alt="User Avatar"
-                width={80}
-                height={80}
-                className="rounded-full"
-              />
+              {user && (
+                <div className="relative w-20 h-20">
+                  <Image
+                    src={user.profilePicture || "/default-profile.png"}
+                    alt={`${user.firstName}'s Avatar`}
+                    width={80}
+                    height={80}
+                    className="rounded-full object-cover"
+                    onError={() => setImageError(true)}
+                    priority
+                  />
+                </div>
+              )}
               <div>
                 {user && (
                   <>
@@ -210,7 +232,9 @@ export default function UserPage() {
               </div>
             </div>
             <div className="mt-4">
-              <h3 className="text-md font-semibold text-gray-700">User Details</h3>
+              <h3 className="text-md font-semibold text-gray-700">
+                User Details
+              </h3>
               <ul className="mt-2 text-gray-600 space-y-1">
                 <li>Role: User</li>
                 <li>Status: Active</li>
@@ -220,9 +244,11 @@ export default function UserPage() {
 
           {/* Storage Usage Box */}
           <div className="w-full bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Storage Usage</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
+              Storage Usage
+            </h3>
             <p className="text-sm text-gray-600 mb-2">
-              You are using {storageStats.usedStorage.toFixed(2)}MB out of{' '}
+              You are using {storageStats.usedStorage.toFixed(2)}MB out of{" "}
               {storageStats.totalStorage}MB
             </p>
             {/* Progress Bar */}
@@ -230,10 +256,10 @@ export default function UserPage() {
               <div
                 className={`h-6 rounded-full transition-all duration-300 ${
                   storageStats.percentageUsed > 90
-                    ? 'bg-red-500'
+                    ? "bg-red-500"
                     : storageStats.percentageUsed > 70
-                    ? 'bg-yellow-500'
-                    : 'bg-green-500'
+                    ? "bg-yellow-500"
+                    : "bg-green-500"
                 } float-left`}
                 style={{
                   width: `${Math.min(storageStats.percentageUsed, 100)}%`,
@@ -257,8 +283,8 @@ export default function UserPage() {
                 Storage Distribution by File Type
               </h3>
               <div className="w-full h-[800px] flex items-center justify-center">
-                <div style={{ width: '80%', height: '80%' }}>
-                  <Pie
+                <div style={{ width: "80%", height: "80%" }}>
+                  {/* <Pie
                     data={getChartData()}
                     options={{
                       responsive: true,
@@ -281,7 +307,7 @@ export default function UserPage() {
                         },
                       },
                     }}
-                  />
+                  /> */}
                 </div>
               </div>
             </div>

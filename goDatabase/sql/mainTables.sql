@@ -13,6 +13,7 @@ create table userInfo (
     googleAuthToken VARCHAR(512), -- Store the Google OAuth2 token if needed
     bucketName VARCHAR(255) UNIQUE, -- MinIO bucket name for the user
     faceScanned BOOLEAN DEFAULT FALSE
+    profilePicture VARCHAR(512); -- Store the Google profile picture URL
 );
 
 drop table if exists Folder cascade;

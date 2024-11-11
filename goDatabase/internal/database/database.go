@@ -18,18 +18,20 @@ type UserInfo struct {
 	UserEmail  string
 	LastLogin  time.Time
 	BucketName string
+	ProfilePicture string `json:"profilePicture"`
 }
 
 type Service interface {
 	Health() map[string]string
 	IsUserInDatabase(email string) (bool, error)
-	AddUser(fName, lName, email, authToken, oauthID string) (int, error)
+	AddUser(fName, lName, email, authToken, oauthID, profilePicture string) (int, error)
 	UpdateLastLogin(email string) error
 	UpdateUserBucketName(userEmail string, bucketName string) error
 	GetUserIDByEmail(email string) (int, error)
 	GetBucketNameByEmail(email string) (string, error)
     CheckIfFaceisScanned(userID int) (bool, error)
     UpdateFaceScannedBool(userID int, updateBool bool) error
+	UpdateProfilePicture(email string, profilePicture string) error
 }
 
 type service struct {
@@ -93,14 +95,17 @@ func (s *service) IsUserInDatabase(email string) (bool, error) {
 }
 
 // Add a new user to the database and return the userID
-func (s *service) AddUser(fName, lName, email, authToken, oauthID string) (int, error) {
+func (s *service) AddUser(fName, lName, email, authToken, oauthID, profilePicture string) (int, error) {
 	query := `
-		INSERT INTO userInfo (firstName, lastName, userEmail, lastLogin, googleAuthToken, googleUserID)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO userInfo (
+			firstName, lastName, userEmail, lastLogin, 
+			googleAuthToken, googleUserID, profilePicture
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING userID
 	`
 	var userID int
-	err := s.db.QueryRow(query, fName, lName, email, time.Now(), authToken, oauthID).Scan(&userID)
+	err := s.db.QueryRow(query, fName, lName, email, time.Now(), authToken, oauthID, profilePicture).Scan(&userID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to add user: %v", err)
 	}
@@ -167,4 +172,23 @@ func (s *service) GetBucketNameByEmail(email string) (string, error) {
 		return "", fmt.Errorf("failed to get bucket name by email: %v", err)
 	}
 	return bucketName, nil
+}
+
+
+func (s *service) UpdateProfilePicture(email string, profilePicture string) error {
+	query := `UPDATE userInfo SET profilePicture = $1 WHERE userEmail = $2`
+	result, err := s.db.Exec(query, profilePicture, email)
+	if err != nil {
+		return fmt.Errorf("failed to update profile picture: %v", err)
+	}
+	
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error checking rows affected: %v", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("no user found with email: %s", email)
+	}
+	
+	return nil
 }
