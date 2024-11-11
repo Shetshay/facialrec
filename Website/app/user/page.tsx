@@ -3,7 +3,8 @@ import Layout from "../components/Layout";
 import Image from "next/image";
 import { useAuth } from "../Context/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { Camera, Upload, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 
@@ -35,15 +36,82 @@ interface BucketStats {
 }
 
 export default function UserPage() {
-  const { user } = useAuth();
+  const { user, checkAuth } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageError, setImageError] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [storageStats, setStorageStats] = useState<BucketStats>({
     usedStorage: 0,
     totalStorage: 100,
     percentageUsed: 0,
     fileTypeDistribution: [],
   });
-  const [imageError, setImageError] = useState(false);
   const [files, setFiles] = useState<FileObject[]>([]);
+
+  const handleProfilePictureClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (e.g., 5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size should be less than 5MB");
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append("profilePicture", file);
+
+      // Upload to server
+      // Add this right before the fetch call in handleFileChange:
+      console.log(
+        "About to send request to:",
+        "http://localhost:3000/api/updateProfilePicture"
+      );
+      const response = await fetch(
+        "http://localhost:3000/api/updateProfilePicture",
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update profile picture");
+      }
+
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      // Refresh user data to get the new profile picture
+      await checkAuth();
+      setImageError(false);
+    } catch (error) {
+      console.error("Error updating profile picture:", error);
+      alert("Failed to update profile picture. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const calculateStorageStats = (files: FileObject[]) => {
     let totalSize = 0;
@@ -128,67 +196,67 @@ export default function UserPage() {
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const allFiles = await fetchAllFiles();
-      setFiles(allFiles);
-      const stats = calculateStorageStats(allFiles);
-      console.log("Storage Stats:", stats);
-      setStorageStats(stats);
-    };
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     const allFiles = await fetchAllFiles();
+  //     setFiles(allFiles);
+  //     const stats = calculateStorageStats(allFiles);
+  //     console.log("Storage Stats:", stats);
+  //     setStorageStats(stats);
+  //   };
 
-    fetchData();
-    // Refresh every minute
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
-  }, []);
+  //   fetchData();
+  //   // Refresh every minute
+  //   const interval = setInterval(fetchData, 60000);
+  //   return () => clearInterval(interval);
+  // }, []);
 
-  const getChartData = () => {
-    const labels = storageStats.fileTypeDistribution.map(
-      (item) => `${item.type} (${formatBytes(item.size)})` // Add size to labels
-    );
-    const data = storageStats.fileTypeDistribution.map((item) => item.size);
+  // const getChartData = () => {
+  //   const labels = storageStats.fileTypeDistribution.map(
+  //     (item) => `${item.type} (${formatBytes(item.size)})` // Add size to labels
+  //   );
+  //   const data = storageStats.fileTypeDistribution.map((item) => item.size);
 
-    console.log("Chart Data:", {
-      labels,
-      data,
-      total: data.reduce((a, b) => a + b, 0),
-    });
+  //   console.log("Chart Data:", {
+  //     labels,
+  //     data,
+  //     total: data.reduce((a, b) => a + b, 0),
+  //   });
 
-    return {
-      labels,
-      datasets: [
-        {
-          label: "Storage Usage",
-          data,
-          backgroundColor: [
-            "#FF6384",
-            "#36A2EB",
-            "#FFCE56",
-            "#4BC0C0",
-            "#9966FF",
-            "#FF9F40",
-            "#8E44AD",
-            "#2ECC71",
-            "#E74C3C",
-            "#3498DB",
-          ],
-          hoverBackgroundColor: [
-            "#FF6384",
-            "#36A2EB",
-            "#FFCE56",
-            "#4BC0C0",
-            "#9966FF",
-            "#FF9F40",
-            "#8E44AD",
-            "#2ECC71",
-            "#E74C3C",
-            "#3498DB",
-          ],
-        },
-      ],
-    };
-  };
+  // return {
+  //   //labels,
+  //   datasets: [
+  //     {
+  //       label: "Storage Usage",
+  //       data,
+  //       backgroundColor: [
+  //         "#FF6384",
+  //         "#36A2EB",
+  //         "#FFCE56",
+  //         "#4BC0C0",
+  //         "#9966FF",
+  //         "#FF9F40",
+  //         "#8E44AD",
+  //         "#2ECC71",
+  //         "#E74C3C",
+  //         "#3498DB",
+  //       ],
+  //       hoverBackgroundColor: [
+  //         "#FF6384",
+  //         "#36A2EB",
+  //         "#FFCE56",
+  //         "#4BC0C0",
+  //         "#9966FF",
+  //         "#FF9F40",
+  //         "#8E44AD",
+  //         "#2ECC71",
+  //         "#E74C3C",
+  //         "#3498DB",
+  //       ],
+  //     },
+  //   ],
+  // };
+  //};
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return "0 Bytes";
@@ -208,15 +276,42 @@ export default function UserPage() {
           <div className="w-full bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center space-x-4">
               {user && (
-                <div className="relative w-20 h-20">
-                  <Image
-                    src={user.profilePicture || "/default-profile.png"}
-                    alt={`${user.firstName}'s Avatar`}
-                    width={80}
-                    height={80}
-                    className="rounded-full object-cover"
-                    onError={() => setImageError(true)}
-                    priority
+                <div className="relative group">
+                  <div
+                    className="w-20 h-20 rounded-full overflow-hidden relative cursor-pointer"
+                    onClick={handleProfilePictureClick}
+                  >
+                    <Image
+                      src={
+                        imageError
+                          ? "/default-profile.png"
+                          : user.profilePicture || "/default-profile.png"
+                      }
+                      alt={`${user.firstName}'s Avatar`}
+                      width={80}
+                      height={80}
+                      className="rounded-full object-cover"
+                      onError={() => setImageError(true)}
+                      priority
+                    />
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      {uploading ? (
+                        <div className="animate-spin">
+                          <Camera className="h-6 w-6 text-white" />
+                        </div>
+                      ) : (
+                        <Camera className="h-6 w-6 text-white" />
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={uploading}
                   />
                 </div>
               )}

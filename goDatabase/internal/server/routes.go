@@ -67,6 +67,9 @@ func (s *Server) RegisterRoutes() *gin.Engine {
 
 	r.GET("/api/bucket-stats", s.getBucketStats)
 
+
+	r.POST("/api/updateProfilePicture", s.updateProfilePictureHandler)
+
 	return r
 }
 
@@ -1239,4 +1242,115 @@ func (s *Server) deleteObjects(ctx context.Context, bucketName, prefix string) e
 	}
 
 	return nil
+}
+
+func (s *Server) updateProfilePictureHandler(c *gin.Context) {
+    log.Println("Received profile picture update request") // Add logging
+
+    // Get session
+    session, err := auth.Store.Get(c.Request, auth.SessionName)
+    if err != nil {
+        log.Printf("Session error: %v", err) // Add logging
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+        return
+    }
+
+    // Get user email from session
+    userEmail, ok := session.Values["user_email"].(string)
+    if !ok || userEmail == "" {
+        log.Println("User email not found in session") // Add logging
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
+        return
+    }
+
+    // Parse multipart form
+    if err := c.Request.ParseMultipartForm(5 * 1024 * 1024); err != nil {
+        log.Printf("Error parsing multipart form: %v", err) // Add logging
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form"})
+        return
+    }
+
+    // Get the file from form
+    file, fileHeader, err := c.Request.FormFile("profilePicture")
+    if err != nil {
+        log.Printf("Error getting file from form: %v", err) // Add logging
+        c.JSON(http.StatusBadRequest, gin.H{"error": "No file provided"})
+        return
+    }
+    defer file.Close()
+
+    // Validate file size (5MB limit)
+    if fileHeader.Size > 5*1024*1024 {
+        log.Printf("File too large: %d bytes", fileHeader.Size) // Add logging
+        c.JSON(http.StatusBadRequest, gin.H{"error": "File size too large (max 5MB)"})
+        return
+    }
+
+    // Validate file type
+    contentType := fileHeader.Header.Get("Content-Type")
+    if !strings.HasPrefix(contentType, "image/") {
+        log.Printf("Invalid content type: %s", contentType) // Add logging
+        c.JSON(http.StatusBadRequest, gin.H{"error": "File must be an image"})
+        return
+    }
+
+    // Read file
+    buffer, err := io.ReadAll(file)
+    if err != nil {
+        log.Printf("Error reading file: %v", err) // Add logging
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
+        return
+    }
+
+    // Upload to MinIO
+    bucketName, err := s.getBucketNameByEmail(userEmail)
+    if err != nil {
+        log.Printf("Error getting bucket name: %v", err) // Add logging
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name"})
+        return
+    }
+
+    // Generate unique filename for profile picture
+    fileName := fmt.Sprintf("profile-picture-%d%s", time.Now().UnixNano(), filepath.Ext(fileHeader.Filename))
+    
+    // Upload to MinIO
+    reader := bytes.NewReader(buffer)
+    _, err = s.minioClient.PutObject(
+        context.Background(),
+        bucketName,
+        fileName,
+        reader,
+        int64(len(buffer)),
+        minio.PutObjectOptions{ContentType: contentType},
+    )
+    if err != nil {
+        log.Printf("Error uploading to MinIO: %v", err) // Add logging
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload file"})
+        return
+    }
+
+    // Generate URL for the uploaded file
+    profilePictureURL := fmt.Sprintf("/api/downloadFile/%s/%s", bucketName, fileName)
+
+    // Update profile picture URL in database
+    err = s.db.UpdateProfilePicture(userEmail, profilePictureURL)
+    if err != nil {
+        log.Printf("Error updating database: %v", err) // Add logging
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile picture in database"})
+        return
+    }
+
+    // Update session with new profile picture URL
+    session.Values["user_profile_picture"] = profilePictureURL
+    if err := session.Save(c.Request, c.Writer); err != nil {
+        log.Printf("Error saving session: %v", err) // Add logging
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update session"})
+        return
+    }
+
+    log.Println("Profile picture updated successfully") // Add logging
+    c.JSON(http.StatusOK, gin.H{
+        "message": "Profile picture updated successfully",
+        "profilePicture": profilePictureURL,
+    })
 }
