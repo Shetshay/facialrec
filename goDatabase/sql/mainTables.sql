@@ -12,8 +12,8 @@ create table userInfo (
     lastLogin TIMESTAMP NOT NULL, -- Last login time (OAuth authentication time)
     googleAuthToken VARCHAR(512), -- Store the Google OAuth2 token if needed
     bucketName VARCHAR(255) UNIQUE, -- MinIO bucket name for the user
-    faceScanned BOOLEAN DEFAULT FALSE
-    profilePicture VARCHAR(512); -- Store the Google profile picture URL
+    faceScanned BOOLEAN DEFAULT FALSE,
+    profilePicture VARCHAR(512) -- Store the Google profile picture URL
 );
 
 drop table if exists Folder cascade;
@@ -51,6 +51,7 @@ drop table if exists faceAuthentication cascade;
 CREATE TABLE faceAuthentication (
     faceID SERIAL NOT NULL PRIMARY KEY,
     featureVector DOUBLE PRECISION[] NOT NULL,
+
     regDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     lastUsed TIMESTAMP NOT NULL,
     userID INT NOT NULL,
