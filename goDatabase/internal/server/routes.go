@@ -274,7 +274,9 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 	session.Values["user_database_id"] = internalUserID
     session.Values["user_profile_picture"] = user.AvatarURL
 
-	fmt.Println(internalUserID)
+    log.Println(user.UserID)
+
+//	fmt.Println(internalUserID)
 
 	// Generate bucket name
 	bucketName := fmt.Sprintf("user-%d", internalUserID)
@@ -609,6 +611,7 @@ func (s *Server) userCookieInfo(c *gin.Context) {
 	userID := session.Values["user_database_id"].(int)
     userProfilePicture := session.Values["user_profile_picture"]
 	faceScannedStatus, err := s.db.CheckIfFaceisScanned(userID)
+    userOAuthID := session.Values["user_id"].(string)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get faceScannedStatus"})
@@ -622,6 +625,7 @@ func (s *Server) userCookieInfo(c *gin.Context) {
 		"userID":            userID,
 		"faceScannedStatus": faceScannedStatus,
         "profilePicture": userProfilePicture,
+        "userOAuthID": userOAuthID,
 	})
 }
 
