@@ -26,8 +26,6 @@ import (
 )
 
 func (s *Server) RegisterRoutes() *gin.Engine {
-	// gin.setMode(gin.DebugMode)
-
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -271,6 +269,7 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 	session.Values["user_fName"] = user.FirstName
 	session.Values["user_lName"] = user.LastName
 	session.Values["user_database_id"] = internalUserID
+    session.Values["user_profile_picture"] = user.AvatarURL
 
 	fmt.Println(internalUserID)
 
@@ -605,10 +604,8 @@ func (s *Server) userCookieInfo(c *gin.Context) {
 	userfName := session.Values["user_fName"].(string)
 	userlName := session.Values["user_lName"].(string)
 	userID := session.Values["user_database_id"].(int)
+    userProfilePicture := session.Values["user_profile_picture"]
 	faceScannedStatus, err := s.db.CheckIfFaceisScanned(userID)
-
-	fmt.Println("UPDATED")
-	fmt.Println(faceScannedStatus)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get faceScannedStatus"})
@@ -621,6 +618,7 @@ func (s *Server) userCookieInfo(c *gin.Context) {
 		"lastName":          userlName,
 		"userID":            userID,
 		"faceScannedStatus": faceScannedStatus,
+        "profilePicture": userProfilePicture,
 	})
 }
 
