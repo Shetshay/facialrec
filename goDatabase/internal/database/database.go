@@ -32,6 +32,8 @@ type Service interface {
     CheckIfFaceisScanned(userID int) (bool, error)
     UpdateFaceScannedBool(userID int, updateBool bool) error
 	UpdateProfilePicture(email string, profilePicture string) error
+	GetProfilePictureByEmail(email string) (string, error)
+
 }
 
 type service struct {
@@ -191,4 +193,17 @@ func (s *service) UpdateProfilePicture(email string, profilePicture string) erro
 	}
 	
 	return nil
+}
+
+func (s *service) GetProfilePictureByEmail(email string) (string, error) {
+    var profilePicture string
+    query := `SELECT profilePicture FROM userInfo WHERE userEmail = $1`
+    err := s.db.QueryRow(query, email).Scan(&profilePicture)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return "", fmt.Errorf("no user found with email: %s", email)
+        }
+        return "", fmt.Errorf("failed to get profile picture: %v", err)
+    }
+    return profilePicture, nil
 }

@@ -247,16 +247,19 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 			return
 		}
 		fmt.Println("User already exists. Last login time updated.")
-
+		profilePicture, err := s.db.GetProfilePictureByEmail(userEmail)
+		session.Values["user_profile_picture"] = profilePicture
 		// Get internal user ID
 		internalUserID, err = s.db.GetUserIDByEmail(userEmail)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error retrieving user ID", "details": err.Error()})
 			return
 		}
+
 	} else {
 		// Add user to the database
 		internalUserID, err = s.db.AddUser(user.FirstName, user.LastName, userEmail, user.AccessToken, user.UserID, user.AvatarURL)
+		session.Values["user_profile_picture"] = user.AvatarURL
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to database", "details": err.Error()})
 			return
@@ -272,7 +275,6 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 	session.Values["user_fName"] = user.FirstName
 	session.Values["user_lName"] = user.LastName
 	session.Values["user_database_id"] = internalUserID
-    session.Values["user_profile_picture"] = user.AvatarURL
 
     log.Println(user.UserID)
 
@@ -1334,7 +1336,7 @@ func (s *Server) updateProfilePictureHandler(c *gin.Context) {
     }
 
     // Generate URL for the uploaded file
-    profilePictureURL := fmt.Sprintf("/api/downloadFile/%s", fileName)
+    profilePictureURL := fmt.Sprintf("api/downloadFile/%s", fileName)
 
     // Update profile picture URL in database
     err = s.db.UpdateProfilePicture(userEmail, profilePictureURL)

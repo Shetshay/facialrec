@@ -287,11 +287,12 @@ export default function UserPage() {
                     className="w-20 h-20 rounded-full overflow-hidden relative cursor-pointer"
                     onClick={handleProfilePictureClick}
                   >
+                  console.log({user.profilePicture})
                     <Image
                       src={
                         imageError || !user.profilePicture
-                          ? "/default-profile.png"
-                          : `http://localhost:3000${user.profilePicture}`
+                          ? `${user.profilePicture}`
+                          : `http://localhost:3000/${user.profilePicture}`
                       }
                       alt={`${user.firstName}'s Avatar`}
                       width={80}
