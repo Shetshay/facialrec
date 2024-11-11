@@ -40,6 +40,12 @@ export default function UserPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageError, setImageError] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Add this helper function
+  const getProfilePictureUrl = () => {
+    if (!user?.profilePicture) return "/default-profile.png";
+    return `http://localhost:3000${user.profilePicture}`;
+  };
+
   const [storageStats, setStorageStats] = useState<BucketStats>({
     usedStorage: 0,
     totalStorage: 100,
@@ -283,9 +289,9 @@ export default function UserPage() {
                   >
                     <Image
                       src={
-                        imageError
+                        imageError || !user.profilePicture
                           ? "/default-profile.png"
-                          : user.profilePicture || "/default-profile.png"
+                          : `http://localhost:3000${user.profilePicture}`
                       }
                       alt={`${user.firstName}'s Avatar`}
                       width={80}
@@ -293,6 +299,8 @@ export default function UserPage() {
                       className="rounded-full object-cover"
                       onError={() => setImageError(true)}
                       priority
+                      unoptimized // Add this line
+                      loader={({ src }) => src} // Add this line
                     />
                     {/* Overlay on hover */}
                     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

@@ -1334,7 +1334,7 @@ func (s *Server) updateProfilePictureHandler(c *gin.Context) {
     }
 
     // Generate URL for the uploaded file
-    profilePictureURL := fmt.Sprintf("/api/downloadFile/%s/%s", bucketName, fileName)
+    profilePictureURL := fmt.Sprintf("/api/downloadFile/%s", fileName)
 
     // Update profile picture URL in database
     err = s.db.UpdateProfilePicture(userEmail, profilePictureURL)
