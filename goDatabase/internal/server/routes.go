@@ -67,15 +67,13 @@ func (s *Server) RegisterRoutes() *gin.Engine {
 	// **Add the new endpoint for moving files/folders**
 	r.POST("/api/moveFile", s.moveFileHandler)
 
-
-
 	r.GET("/api/bucket-stats", s.getBucketStats)
 
 	return r
 }
 
 const (
-    STORAGE_LIMIT_BYTES = 100 * 1024 * 1024 // 100MB in bytes
+	STORAGE_LIMIT_BYTES = 100 * 1024 * 1024 // 100MB in bytes
 )
 
 func (s *Server) getBucketNameByEmail(userEmail string) (string, error) {
@@ -320,83 +318,53 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 	c.Redirect(http.StatusFound, homepageURL)
 }
 
-// Add this new endpoint handler
 func (s *Server) getBucketStats(c *gin.Context) {
-    session, err := auth.Store.Get(c.Request, auth.SessionName)
-    if err != nil {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-        return
-    }
+	session, err := auth.Store.Get(c.Request, auth.SessionName)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
 
-    userEmail, ok := session.Values["user_email"].(string)
-    if !ok || userEmail == "" {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
-        return
-    }
+	userEmail, ok := session.Values["user_email"].(string)
+	if !ok || userEmail == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not logged in"})
+		return
+	}
 
-    bucketName, err := s.getBucketNameByEmail(userEmail)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name"})
-        return
-    }
+	bucketName, err := s.getBucketNameByEmail(userEmail)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting bucket name"})
+		return
+	}
 
-    ctx := context.Background()
-    var totalSize int64 = 0
+	ctx := context.Background()
+	var totalSize int64 = 0
 
-    // List all objects in the bucket
-    objectCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
-        Recursive: true,
-    })
+	// List all objects in the bucket
+	objectCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
+		Recursive: true,
+	})
 
-    for object := range objectCh {
-        if object.Err != nil {
-            continue
-        }
-        totalSize += object.Size
-    }
+	for object := range objectCh {
+		if object.Err != nil {
+			continue
+		}
+		totalSize += object.Size
+	}
 
-    // Convert to MB for frontend display
-    usedStorageMB := float64(totalSize) / 1024 / 1024
-    totalStorageMB := float64(STORAGE_LIMIT_BYTES) / 1024 / 1024
-    percentageUsed := (usedStorageMB / totalStorageMB) * 100
+	// Convert to MB for frontend display
+	usedStorageMB := float64(totalSize) / 1024 / 1024
+	totalStorageMB := float64(STORAGE_LIMIT_BYTES) / 1024 / 1024
+	percentageUsed := (usedStorageMB / totalStorageMB) * 100
 
-    c.JSON(http.StatusOK, gin.H{
-        "usedStorage": usedStorageMB,
-        "totalStorage": totalStorageMB,
-        "percentageUsed": percentageUsed,
-    })
+	c.JSON(http.StatusOK, gin.H{
+		"usedStorage":    usedStorageMB,
+		"totalStorage":   totalStorageMB,
+		"percentageUsed": percentageUsed,
+	})
 }
 
 func (s *Server) uploadFileHandler(c *gin.Context) {
-
-	//get bucket size
-	ctx := context.Background()
-    var currentSize int64 = 0
-    objectCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
-        Recursive: true,
-    })
-
-    for object := range objectCh {
-        if object.Err != nil {
-            continue
-        }
-        currentSize += object.Size
-    }
-
-    // Calculate total size after upload
-    var totalUploadSize int64 = 0
-    files := form.File["files"]
-    for _, fileHeader := range files {
-        totalUploadSize += fileHeader.Size
-    }
-
-    // Check if upload would exceed limit
-    if currentSize+totalUploadSize > STORAGE_LIMIT_BYTES {
-        c.JSON(http.StatusBadRequest, gin.H{
-            "error": "Upload would exceed storage limit of 100MB",
-        })
-        return
-    }
 	// Get the session
 	session, err := auth.Store.Get(c.Request, auth.SessionName)
 	if err != nil {
@@ -424,6 +392,9 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
 		return
 	}
 
+	// Assign the parsed form to `form`
+	form := c.Request.MultipartForm
+
 	// Get the current path from form
 	currentPath := c.Request.FormValue("path")
 	currentPath = strings.Trim(currentPath, "/")
@@ -431,8 +402,35 @@ func (s *Server) uploadFileHandler(c *gin.Context) {
 		currentPath += "/"
 	}
 
-	form := c.Request.MultipartForm
 	files := form.File["files"]
+
+	// Get current bucket size
+	ctx := context.Background()
+	var currentSize int64 = 0
+	objectCh := s.minioClient.ListObjects(ctx, bucketName, minio.ListObjectsOptions{
+		Recursive: true,
+	})
+
+	for object := range objectCh {
+		if object.Err != nil {
+			continue
+		}
+		currentSize += object.Size
+	}
+
+	// Calculate total upload size
+	var totalUploadSize int64 = 0
+	for _, fileHeader := range files {
+		totalUploadSize += fileHeader.Size
+	}
+
+	// Check if upload would exceed limit
+	if currentSize+totalUploadSize > STORAGE_LIMIT_BYTES {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Upload would exceed storage limit of 100MB",
+		})
+		return
+	}
 
 	uploadedFiles := make([]string, 0)
 	failedFiles := make([]string, 0)
