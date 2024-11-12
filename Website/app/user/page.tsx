@@ -4,17 +4,9 @@ import Image from "next/image";
 import { useAuth } from "../Context/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { useEffect, useState, useRef } from "react";
-import { Camera, Upload, X } from "lucide-react";
-import dynamic from "next/dynamic";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-
-// Register chart.js components
-// ChartJS.register(ArcElement, Tooltip, Legend);
-
-// Dynamically import the Pie component
-// const Pie = dynamic(() => import('react-chartjs-2').then((mod) => mod.Pie), {
-//   ssr: false,
-// });
+import { Camera } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "../components/card";
+import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface FileObject {
   name: string;
@@ -40,37 +32,98 @@ export default function UserPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageError, setImageError] = useState(false);
   const [uploading, setUploading] = useState(false);
-  // Add this helper function
-  const getProfilePictureUrl = () => {
-    if (!user?.profilePicture) return "/default-profile.png";
-    return `http://localhost:3000${user.profilePicture}`;
-  };
-
+  const [files, setFiles] = useState<FileObject[]>([]);
   const [storageStats, setStorageStats] = useState<BucketStats>({
     usedStorage: 0,
     totalStorage: 100,
     percentageUsed: 0,
     fileTypeDistribution: [],
   });
-  const [files, setFiles] = useState<FileObject[]>([]);
+
+  // Colors for the pie chart
+  const COLORS = [
+    '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8',
+    '#82ca9d', '#ffc658', '#ff7c43', '#665191', '#2f4b7c'
+  ];
+
+  useEffect(() => {
+    const fetchStorageData = async () => {
+      try {
+        const bucketResponse = await fetch('http://localhost:3000/api/listBucket', {
+          credentials: 'include'
+        });
+        if (!bucketResponse.ok) throw new Error('Failed to fetch bucket data');
+        const bucketData = await bucketResponse.json();
+        setFiles(bucketData.files || []);
+
+        const statsResponse = await fetch('http://localhost:3000/api/bucket-stats', {
+          credentials: 'include'
+        });
+        if (!statsResponse.ok) throw new Error('Failed to fetch storage stats');
+        const stats = await statsResponse.json();
+
+        const typeMap = new Map<string, number>();
+        bucketData.files?.forEach((file: FileObject) => {
+          if (file.type === "file") {
+            const type = getFileType(file.contentType, file.name);
+            const currentSize = typeMap.get(type) || 0;
+            typeMap.set(type, currentSize + file.size);
+          }
+        });
+
+        const distribution = Array.from(typeMap.entries()).map(([type, size]) => ({
+          type,
+          size: Number((size / (1024 * 1024)).toFixed(2)) // Convert to MB
+        }));
+
+        setStorageStats({
+          usedStorage: stats.usedStorage,
+          totalStorage: stats.totalStorage,
+          percentageUsed: stats.percentageUsed,
+          fileTypeDistribution: distribution,
+        });
+      } catch (error) {
+        console.error('Error fetching storage data:', error);
+      }
+    };
+
+    fetchStorageData();
+    const interval = setInterval(fetchStorageData, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const getFileType = (contentType: string, fileName: string): string => {
+    if (!contentType || contentType === 'application/octet-stream') {
+      const ext = fileName.split('.').pop()?.toLowerCase() || '';
+      if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) return 'Images';
+      if (['pdf', 'doc', 'docx', 'txt', 'rtf'].includes(ext)) return 'Documents';
+      if (['mp4', 'avi', 'mov', 'wmv'].includes(ext)) return 'Videos';
+      if (['mp3', 'wav', 'ogg'].includes(ext)) return 'Audio';
+      if (['zip', 'rar', '7z'].includes(ext)) return 'Archives';
+      return 'Others';
+    }
+
+    if (contentType.startsWith('image/')) return 'Images';
+    if (contentType.startsWith('video/')) return 'Videos';
+    if (contentType.startsWith('audio/')) return 'Audio';
+    if (contentType.includes('pdf') || contentType.includes('document') || contentType.includes('text/')) return 'Documents';
+    if (contentType.includes('zip') || contentType.includes('compressed')) return 'Archives';
+    return 'Others';
+  };
 
   const handleProfilePictureClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       alert("Please upload an image file");
       return;
     }
 
-    // Validate file size (e.g., 5MB limit)
     if (file.size > 5 * 1024 * 1024) {
       alert("Image size should be less than 5MB");
       return;
@@ -78,17 +131,9 @@ export default function UserPage() {
 
     try {
       setUploading(true);
-
-      // Create FormData
       const formData = new FormData();
       formData.append("profilePicture", file);
 
-      // Upload to server
-      // Add this right before the fetch call in handleFileChange:
-      console.log(
-        "About to send request to:",
-        "http://localhost:3000/api/updateProfilePicture"
-      );
       const response = await fetch(
         "http://localhost:3000/api/updateProfilePicture",
         {
@@ -103,12 +148,10 @@ export default function UserPage() {
         throw new Error(errorData.error || "Failed to update profile picture");
       }
 
-      // Clear the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
 
-      // Refresh user data to get the new profile picture
       await checkAuth();
       setImageError(false);
     } catch (error) {
@@ -117,159 +160,6 @@ export default function UserPage() {
     } finally {
       setUploading(false);
     }
-  };
-
-  const calculateStorageStats = (files: FileObject[]) => {
-    let totalSize = 0;
-    const typeMap = new Map<string, number>();
-
-    const getFileType = (file: FileObject) => {
-      if (file.type === "folder") return "Folders";
-
-      const extension = file.name.split(".").pop()?.toLowerCase() || "";
-      if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(extension))
-        return "Images";
-      if (["pdf", "doc", "docx", "txt", "rtf"].includes(extension))
-        return "Documents";
-      if (["mp4", "avi", "mov", "wmv"].includes(extension)) return "Videos";
-      if (["mp3", "wav", "ogg"].includes(extension)) return "Audio";
-      if (["zip", "rar", "7z"].includes(extension)) return "Archives";
-      return "Others";
-    };
-
-    // Add debug logging for file sizes
-    files.forEach((file) => {
-      if (file.type === "file") {
-        console.log(`File: ${file.name}, Original size: ${file.size} bytes`);
-        totalSize += Number(file.size); // Ensure size is a number
-        const fileType = getFileType(file);
-        typeMap.set(fileType, (typeMap.get(fileType) || 0) + Number(file.size));
-      }
-    });
-
-    const distribution = Array.from(typeMap.entries()).map(([type, size]) => ({
-      type,
-      size: Number(size), // Ensure size is a number
-    }));
-
-    // Debug logs
-    console.log("Total size in bytes:", totalSize);
-    console.log("Total size in MB:", totalSize / (1024 * 1024));
-    console.log("Distribution:", distribution);
-
-    return {
-      usedStorage: Number((totalSize / (1024 * 1024)).toFixed(2)), // Convert to MB and fix decimal places
-      totalStorage: 1000, // 1GB limit in MB
-      percentageUsed: Number(
-        ((totalSize / (1024 * 1024 * 1024)) * 100).toFixed(2)
-      ), // Convert to percentage with 2 decimal places
-      fileTypeDistribution: distribution,
-    };
-  };
-
-  const fetchAllFiles = async (path: string = ""): Promise<FileObject[]> => {
-    try {
-      const queryPath = path ? `?path=${encodeURIComponent(path)}` : "";
-      const response = await fetch(
-        `http://localhost:3000/api/listBucket${queryPath}`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const filesArray = Array.isArray(data.files) ? data.files : [];
-        console.log("Files fetched:", filesArray);
-        let allFiles: FileObject[] = [...filesArray];
-
-        // Recursively get files from subfolders
-        for (const file of filesArray) {
-          if (file.type === "folder") {
-            const folderPath = path ? `${path}/${file.name}` : file.name;
-            const subFiles = await fetchAllFiles(folderPath);
-            allFiles = allFiles.concat(subFiles);
-          }
-        }
-
-        return allFiles;
-      }
-      return [];
-    } catch (error) {
-      console.error("Error fetching files:", error);
-      return [];
-    }
-  };
-
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     const allFiles = await fetchAllFiles();
-  //     setFiles(allFiles);
-  //     const stats = calculateStorageStats(allFiles);
-  //     console.log("Storage Stats:", stats);
-  //     setStorageStats(stats);
-  //   };
-
-  //   fetchData();
-  //   // Refresh every minute
-  //   const interval = setInterval(fetchData, 60000);
-  //   return () => clearInterval(interval);
-  // }, []);
-
-  // const getChartData = () => {
-  //   const labels = storageStats.fileTypeDistribution.map(
-  //     (item) => `${item.type} (${formatBytes(item.size)})` // Add size to labels
-  //   );
-  //   const data = storageStats.fileTypeDistribution.map((item) => item.size);
-
-  //   console.log("Chart Data:", {
-  //     labels,
-  //     data,
-  //     total: data.reduce((a, b) => a + b, 0),
-  //   });
-
-  // return {
-  //   //labels,
-  //   datasets: [
-  //     {
-  //       label: "Storage Usage",
-  //       data,
-  //       backgroundColor: [
-  //         "#FF6384",
-  //         "#36A2EB",
-  //         "#FFCE56",
-  //         "#4BC0C0",
-  //         "#9966FF",
-  //         "#FF9F40",
-  //         "#8E44AD",
-  //         "#2ECC71",
-  //         "#E74C3C",
-  //         "#3498DB",
-  //       ],
-  //       hoverBackgroundColor: [
-  //         "#FF6384",
-  //         "#36A2EB",
-  //         "#FFCE56",
-  //         "#4BC0C0",
-  //         "#9966FF",
-  //         "#FF9F40",
-  //         "#8E44AD",
-  //         "#2ECC71",
-  //         "#E74C3C",
-  //         "#3498DB",
-  //       ],
-  //     },
-  //   ],
-  // };
-  //};
-
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
   };
 
   return (
@@ -287,23 +177,16 @@ export default function UserPage() {
                     className="w-20 h-20 rounded-full overflow-hidden relative cursor-pointer"
                     onClick={handleProfilePictureClick}
                   >
-                  console.log({user.profilePicture})
                     <Image
-                      src={
-                        imageError || !user.profilePicture
-                          ? `${user.profilePicture}`
-                          : `http://localhost:3000/${user.profilePicture}`
-                      }
+                      src={user.profilePicture || "/default-profile.png"}
                       alt={`${user.firstName}'s Avatar`}
                       width={80}
                       height={80}
                       className="rounded-full object-cover"
                       onError={() => setImageError(true)}
                       priority
-                      unoptimized // Add this line
-                      loader={({ src }) => src} // Add this line
+                      referrerPolicy="no-referrer"
                     />
-                    {/* Overlay on hover */}
                     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       {uploading ? (
                         <div className="animate-spin">
@@ -355,7 +238,6 @@ export default function UserPage() {
               You are using {storageStats.usedStorage.toFixed(2)}MB out of{" "}
               {storageStats.totalStorage}MB
             </p>
-            {/* Progress Bar */}
             <div className="w-full bg-gray-200 rounded-full h-6 mb-4">
               <div
                 className={`h-6 rounded-full transition-all duration-300 ${
@@ -380,40 +262,39 @@ export default function UserPage() {
             )}
           </div>
 
-          {/* File Type Distribution Chart */}
+          {/* Storage Distribution Chart */}
           {storageStats.fileTypeDistribution.length > 0 && (
-            <div className="w-full bg-white rounded-lg shadow-md p-6 lg:col-span-2">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">
-                Storage Distribution by File Type
-              </h3>
-              <div className="w-full h-[800px] flex items-center justify-center">
-                <div style={{ width: "80%", height: "80%" }}>
-                  {/* <Pie
-                    data={getChartData()}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: true,
-                      plugins: {
-                        legend: {
-                          position: 'right',
-                          labels: {
-                            boxWidth: 5,
-                            padding: 20,
-                          },
-                        },
-                        tooltip: {
-                          callbacks: {
-                            label: (context: any) => {
-                              const value = context.raw;
-                              return ` ${formatBytes(value)}`;
-                            },
-                          },
-                        },
-                      },
-                    }}
-                  /> */}
-                </div>
-              </div>
+  <div className="lg:col-span-2">
+    <Card>
+      <CardHeader>
+        <CardTitle>Storage Distribution by File Type</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="w-full h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={storageStats.fileTypeDistribution}
+                        dataKey="size"
+                        nameKey="type"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={150}
+                        label={({ type, size }) => `${type} (${size.toFixed(2)} MB)`}
+                      >
+                        {storageStats.fileTypeDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number) => `${value.toFixed(2)} MB`}
+                      />
+                      <Legend />
+                    </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>
