@@ -4,7 +4,6 @@ drop table if exists userInfo cascade;
 -- Create User table (OAuth2 adaptation)
 create table userInfo (
     userID SERIAL NOT NULL PRIMARY KEY, -- internal userID for your system
-    googleUserID VARCHAR(255) NOT NULL UNIQUE, -- Google OAuth2 user ID
     firstName VARCHAR(255) NOT NULL,
     lastName VARCHAR(255) NOT NULL,
     userEmail VARCHAR(255) NOT NULL UNIQUE, -- Email from Google
@@ -50,8 +49,8 @@ drop table if exists faceAuthentication cascade;
 -- Create faceAuthentication table
 CREATE TABLE faceAuthentication (
     faceID SERIAL NOT NULL PRIMARY KEY,
-    featureVector DOUBLE PRECISION[] NOT NULL,
-
+    featureVector TEXT[] NOT NULL,
+    salt TEXT NOT NULL,
     regDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     lastUsed TIMESTAMP NOT NULL,
     userID INT NOT NULL,

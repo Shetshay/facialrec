@@ -258,7 +258,7 @@ func (s *Server) getAuthCallbackFunction(c *gin.Context) {
 
 	} else {
 		// Add user to the database
-		internalUserID, err = s.db.AddUser(user.FirstName, user.LastName, userEmail, user.AccessToken, user.UserID, user.AvatarURL)
+		internalUserID, err = s.db.AddUser(user.FirstName, user.LastName, userEmail, user.AccessToken, user.AvatarURL)
 		session.Values["user_profile_picture"] = user.AvatarURL
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding user to database", "details": err.Error()})
@@ -1318,7 +1318,7 @@ func (s *Server) updateProfilePictureHandler(c *gin.Context) {
 
     // Generate unique filename for profile picture
     fileName := fmt.Sprintf("profile-picture-%d%s", time.Now().UnixNano(), filepath.Ext(fileHeader.Filename))
-    
+
     // Upload to MinIO
     reader := bytes.NewReader(buffer)
     _, err = s.minioClient.PutObject(

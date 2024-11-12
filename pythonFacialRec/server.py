@@ -8,6 +8,7 @@ import io
 import json
 from datetime import datetime
 import aiohttp_cors
+from cryptoFunctions import UserEncryption
 
 
 async def hello(request):
@@ -20,6 +21,7 @@ async def init_app():
     app.router.add_get('/', hello)
     app.router.add_post('/faceData', firstFaceScan)
     app.router.add_post('/compareTwoFaces', compareTwoFaces)
+    app.router.add_post('/cryptoTest', cryptoTest)
 
 
     # Add CORS support to all routes
@@ -66,62 +68,6 @@ async def cookieInfo(cookie):
             print(f"Failed to fetch data: {response.status}")
             return None
 
-async def compareTwoFaces(request):
-    # Parse the incoming form data
-
-    #get the cookie info
-
-    cookie_value = request.headers.get("Cookie")  # Extract cookie from incoming request
-
-    reader = await request.multipart()
-
-    # Get the uploaded file
-    field = await reader.next()
-
-    if field and field.name == 'file':
-        image_data = await field.read(decode = True)
-
-        try:
-            image = Image.open(io.BytesIO(image_data))
-
-            # Convert the image to RGB
-            colored_image = image.convert("RGB")
-
-            # Save processed image to a bytes buffer
-            output_buffer = io.BytesIO()
-            colored_image.save(output_buffer, format='JPEG')
-            output_buffer.seek(0)
-
-            facial_encoding = facialFunctions.get_face_encoding(output_buffer)
-
-            facial_encoding_list = facial_encoding.tolist()
-
-            #get info of facialData from database (hardcoded for now)
-            databaseFacialData = databaseFunctions.getUserFacialData(1)
-
-            #change it into a list to pass into facial rec python functions
-            #which take a list. It will convert it to numpy array
-
-            databaseFacialDataList = list(databaseFacialData[0])
-
-            #NEED TO DO THIS TO PROCESS CORRECTLY
-            oldFaceData = databaseFacialDataList[0]
-
-            output = facialFunctions.get_face_comparison_result(facial_encoding_list, oldFaceData)
-
-            print(output)
-
-
-            return web.json_response({"encoding": output})
-
-        except Exception as e:
-            return web.Response(text=f"Error processing image: {str(e)}", status=400)
-
-    # Return error if no file was uploaded
-    return web.Response(text="No file uploaded.", status=400)
-
-
-
 
 async def firstFaceScan(request):
     # Parse the incoming form data
@@ -161,13 +107,21 @@ async def firstFaceScan(request):
 
             # variable for userID
             userID = user_info['userID']
+            userOAuthID = int(user_info['userOAuthID'])
+
 
             print(user_info)
 
             #check to see if face data already in if so skip
             if not databaseFunctions.checkIfUserHasFacialData(userID):
                 print("THEY DONT GOT FACE")
-                databaseFunctions.insertFaceAuthentication(facial_encoding_list, last_used, userID)
+#               databaseFunctions.insertFaceAuthentication(facial_encoding_list, last_used, userID)
+
+                encryptedData = await encryptFaceData(facial_encoding_list, userID, userOAuthID)
+
+                #insert encryptedFaceData with salt into database
+                databaseFunctions.insertFaceAuthentication(encryptedData[0], last_used, userID, encryptedData[1])
+
 
                 # Since this is first login the boolean will be TRUE since they logged in
                 databaseFunctions.updateScanned(userID, True)
@@ -178,8 +132,14 @@ async def firstFaceScan(request):
                 })
             else:
                 print("THEY GOT FACE ALREADY")
-                faceRecResults = await compareTwoFaces(userID, facial_encoding_list)
+                faceRecResults = await compareTwoFaces(userID, facial_encoding_list, userOAuthID)
                 if faceRecResults == True:
+                    #we insert the new facial data into the database
+                    encryptedData = await encryptFaceData(facial_encoding_list, userID, userOAuthID)
+
+                    #insert encryptedFaceData with salt into database
+                    databaseFunctions.updateFaceAuthentication(encryptedData[0], last_used, userID, encryptedData[1])
+
                     #Since compareTwoFaces returns true they are same person
                     #Boolean for updateScanned will be True
                     databaseFunctions.updateScanned(userID, True)
@@ -197,33 +157,125 @@ async def firstFaceScan(request):
     # Return error if no file was uploaded
     return web.Response(text="No file uploaded.", status=400)
 
-async def compareTwoFaces(userID, facial_encoding_list):
-    # Parse the incoming form data
+async def compareTwoFaces(userID, facial_encoding_list, userOAuthID):
+
     try:
-        #dont need to do this since we pass in facial_encoding_list from this function
-        #facial_encoding = facialFunctions.get_face_encoding(output_buffer)
+        # get info of encryptedFaceData from database related from userID
+        # with the encrypted salt as well
+        encryptedFaceData, salt = databaseFunctions.getUserFacialData(userID)
 
-        #facial_encoding_list = facial_encoding.tolist()
+        #decrypt the faceData
+        faceData = await decryptedFaceData(encryptedFaceData, userID, salt, userOAuthID)
 
-        #get info of facialData from database (hardcoded for now)
-        databaseFacialData = databaseFunctions.getUserFacialData(userID)
+        #print(type(faceData))
 
-        #change it into a list to pass into facial rec python functions
-        #which take a list that will convert it to numpy array
-
-        databaseFacialDataList = list(databaseFacialData[0])
-
-        #NEED TO DO THIS TO PROCESS CORRECTLY
-        oldFaceData = databaseFacialDataList[0]
-
-        output = facialFunctions.get_face_comparison_result(facial_encoding_list, oldFaceData)
-
-        print(output)
+        # compare the old face that was encrypted to the new faceData to see if
+        # related
+        output = facialFunctions.get_face_comparison_result(facial_encoding_list, faceData)
 
         return output
 
     except Exception as e:
         return print(e)
+
+async def cryptoTest(request):
+    # Parse the incoming form data
+    cookie_value = request.headers.get("Cookie")  # Extract cookie from incoming request
+    if not cookie_value:
+        return web.Response(text="No cookie provided", status=400)
+
+    user_info = await cookieInfo(cookie_value)
+    if not user_info:
+        return web.Response(text="failed to fetch user data from cookie", status=400)
+
+    reader = await request.multipart()
+
+    # Get the uploaded file
+    field = await reader.next()
+
+    if field and field.name == 'file':
+        image_data = await field.read(decode = True)
+
+        try:
+            image = Image.open(io.BytesIO(image_data))
+
+            # Convert the image to RGB
+            colored_image = image.convert("RGB")
+
+            # Save processed image to a bytes buffer
+            output_buffer = io.BytesIO()
+            colored_image.save(output_buffer, format='JPEG')
+            output_buffer.seek(0)
+
+            facial_encoding = facialFunctions.get_face_encoding(output_buffer)
+
+            #converting numpy array to python3 list
+            facial_encoding_list = facial_encoding.tolist()
+
+            last_used = datetime.now()
+
+            # variable for userID
+            userID = user_info['userID']
+            userOAuthID = int(user_info['userOAuthID'])
+
+#            print(facial_encoding_list)
+
+
+            encryptedFaceData, salt = databaseFunctions.getUserFacialData(userID)
+
+            faceData = await decryptedFaceData(encryptedFaceData, userID, salt, userOAuthID)
+
+            #print(type(faceData))
+
+            output = facialFunctions.get_face_comparison_result(facial_encoding_list, faceData)
+
+            print(output)
+
+
+
+           # this section is for encrypting
+
+            #encryptedData = await encryptFaceData(facial_encoding_list, userID, userOAuthID)
+
+            #insert encryptedFaceData with salt into database
+
+            #databaseFunctions.insertFaceAuthentication(encryptedData[0], last_used, userID, encryptedData[1])
+
+
+
+
+        except Exception as e:
+            return web.Response(text=f"Error processing image: {str(e)}", status=400)
+
+    # Return error if no file was uploaded
+    return web.Response(text="No file uploaded.", status=400)
+
+async def encryptFaceData(facial_encoding_list, userID, userOAuthID):
+    encryption = UserEncryption()
+
+    #generate users salt if EACH TIME when encrypting data
+    userSalt = encryption.generate_user_salt()
+
+    #generate users encryption key
+    userEncryptionKey = encryption.generate_key(userOAuthID, userSalt)
+
+    #encrypt face data using hardcoded oauth2 ID
+    encryptedFaceData = encryption.encrypt_list(facial_encoding_list, userOAuthID, userSalt)
+
+    #this returns a tuple of the encryptedFaceData located at index 0 and
+    #the encrypted salt located at index 1
+    return encryptedFaceData
+
+
+async def decryptedFaceData(encryptedFaceData, userID, userSalt, userOAuthID):
+    encryption = UserEncryption()
+
+    #generate users salt
+
+    #time to decrypt it
+    decryptedFaceData = encryption.decrypt_list(encryptedFaceData, userOAuthID, userSalt)
+
+    return decryptedFaceData
 
 
 
