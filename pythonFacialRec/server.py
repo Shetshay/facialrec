@@ -18,10 +18,10 @@ async def init_app():
     app = web.Application()
 
     # Add routes
-    app.router.add_get('/', hello)
-    app.router.add_post('/faceData', firstFaceScan)
-    app.router.add_post('/compareTwoFaces', compareTwoFaces)
-    app.router.add_post('/cryptoTest', cryptoTest)
+    app.router.add_get('/python/', hello)
+    app.router.add_post('/python/faceData', firstFaceScan)
+    app.router.add_post('/python/compareTwoFaces', compareTwoFaces)
+    app.router.add_post('/python/cryptoTest', cryptoTest)
 
 
     # Add CORS support to all routes
@@ -59,7 +59,7 @@ async def cookieInfo(cookie):
 
         try:
             # Make the request to the backend with only the Cookie header
-            async with session.get("http://backend:3000/api/userCookieInfo", headers=headers) as response:
+            async with session.get("https://facialrec.org/api/userCookieInfo", headers=headers) as response:
                 response.raise_for_status()
                 data = await response.json()
                 return data

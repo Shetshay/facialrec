@@ -49,14 +49,14 @@ export default function UserPage() {
   useEffect(() => {
     const fetchStorageData = async () => {
       try {
-        const bucketResponse = await fetch('http://localhost:3000/api/listBucket', {
+        const bucketResponse = await fetch(`${process.env.NEXT_PUBLIC_LIST_BUCKET}`, {
           credentials: 'include'
         });
         if (!bucketResponse.ok) throw new Error('Failed to fetch bucket data');
         const bucketData = await bucketResponse.json();
         setFiles(bucketData.files || []);
 
-        const statsResponse = await fetch('http://localhost:3000/api/bucket-stats', {
+        const statsResponse = await fetch(`${process.env.NEXT_PUBLIC_BUCKET_STATS}`, {
           credentials: 'include'
         });
         if (!statsResponse.ok) throw new Error('Failed to fetch storage stats');

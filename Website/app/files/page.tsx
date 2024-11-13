@@ -90,7 +90,7 @@ export default function FilesPage() {
         const getAllFiles = async (path: string) => {
           const queryPath = path ? `?path=${encodeURIComponent(path)}` : "";
           const response = await fetch(
-            `http://localhost:3000/api/listBucket${queryPath}`,
+            `${process.env.NEXT_PUBLIC_LIST_BUCKET}${queryPath}`,
             {
               method: "GET",
               credentials: "include",
@@ -191,7 +191,7 @@ export default function FilesPage() {
         ? `?path=${encodeURIComponent(currentPath)}`
         : "";
       const response = await fetch(
-        `http://localhost:3000/api/listBucket${queryPath}`,
+        `${process.env.NEXT_PUBLIC_LIST_BUCKET}${queryPath}`,
         {
           method: "GET",
           credentials: "include",
@@ -219,7 +219,7 @@ export default function FilesPage() {
     const fullPath = currentPath ? `${currentPath}/${name}` : name;
 
     try {
-      const response = await fetch("http://localhost:3000/api/deleteFile", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_DELETE_FILE}`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -249,7 +249,7 @@ export default function FilesPage() {
   const performDelete = async (path: string, type: string) => {
     try {
       const deleteResponse = await fetch(
-        "http://localhost:3000/api/deleteFile?confirmed=true",
+        `${process.env.NEXT_PUBLIC_DELETE_FILE}?confirmed=true`,
         {
           method: "POST",
           credentials: "include",
@@ -322,7 +322,7 @@ export default function FilesPage() {
 
     try {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", "http://localhost:3000/api/uploadFile", true);
+      xhr.open("POST", `${process.env.NEXT_PUBLIC_UPLOAD_FILE}`, true);
       xhr.withCredentials = true;
 
       xhr.upload.onprogress = (event) => {
@@ -367,7 +367,7 @@ export default function FilesPage() {
     }
 
     try {
-      const response = await fetch("http://localhost:3000/api/createFolder", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_CREATE_FOLDER}`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -394,7 +394,7 @@ export default function FilesPage() {
 
   const handleDownloadFolderAsZip = async (folderPath: string) => {
     const encodedPath = encodeURIComponent(folderPath);
-    const downloadUrl = `http://localhost:3000/api/downloadFolderAsZip/${encodedPath}`;
+    const downloadUrl = `${process.env.NEXT_PUBLIC_DOWNLOAD_FOLDER_AS_ZIP}${encodedPath}`;
 
     try {
       setDownloadProgress(0);
@@ -452,7 +452,7 @@ export default function FilesPage() {
     if (!itemToMove) return;
 
     try {
-      const response = await fetch("http://localhost:3000/api/moveFile", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_MOVE_FILE}`, {
         method: "POST",
         credentials: "include",
         headers: {
@@ -483,7 +483,7 @@ export default function FilesPage() {
 
   const fetchFolderStructure = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/listBucket`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_LIST_BUCKET}`, {
         method: "GET",
         credentials: "include",
       });
@@ -506,7 +506,7 @@ export default function FilesPage() {
   const buildFolderTree = async (node: FolderNode, path: string) => {
     const queryPath = path ? `?path=${encodeURIComponent(path)}` : "";
     const response = await fetch(
-      `http://localhost:3000/api/listBucket${queryPath}`,
+      `${process.env.NEXT_PUBLIC_LIST_BUCKET}${queryPath}`,
       {
         method: "GET",
         credentials: "include",

@@ -43,7 +43,7 @@ const FaceScreenshot = () => {
     useEffect(() => {
         if (processingComplete) {
             const redirectTimer = setTimeout(() => {
-                window.location.href = redirectUrl
+                window.location.href = process.env.NEXT_PUBLIC_FILES_REDIRECT_URL;
             }, 1500); // Give user a moment to see the success message
 
             return () => clearTimeout(redirectTimer);
@@ -68,7 +68,7 @@ const FaceScreenshot = () => {
 
                     try {
                         setLoading(true);
-                        const response = await fetch('http://localhost:4269/faceData', {
+                        const response = await fetch(`${process.env.NEXT_PUBLIC_FACE_SCAN_URL}`, {
                             method: 'POST',
                             body: formData,
                             credentials: 'include',

@@ -66,7 +66,7 @@ const FilesGrid: React.FC<FilesGridProps> = ({
                 contentType: file.contentType,
                 url:
                   file.type === "file"
-                    ? `http://localhost:3000/api/downloadFile/${encodeURIComponent(
+                    ? `${process.env.NEXT_PUBLIC_DOWNLOAD_FILE}${encodeURIComponent(
                         file.path || file.name
                       )}`
                     : undefined,
@@ -76,7 +76,7 @@ const FilesGrid: React.FC<FilesGridProps> = ({
                 handleNavigateToFolder(file.path || file.name)
               }
             />
-            
+
             {/* Edit Mode Delete Button */}
             {editMode && (
               <button
@@ -118,7 +118,7 @@ const FilesGrid: React.FC<FilesGridProps> = ({
                   e.stopPropagation();
                   try {
                     const response = await fetch(
-                      `http://localhost:3000/api/downloadFile/${encodeURIComponent(
+                      `${process.env.NEXT_PUBLIC_DOWNLOAD_FILE}${encodeURIComponent(
                         file.path || file.name
                       )}`,
                       {

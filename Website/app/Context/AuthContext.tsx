@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       console.log("Checking authentication status...");
-      const response = await fetch("http://localhost:3000/api/userCookieInfo", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_USER_INFO_URL}`, {
         method: "GET",
         credentials: "include",
         headers: {

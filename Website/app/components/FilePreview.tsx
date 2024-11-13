@@ -110,7 +110,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, onClick }) => {
   const handleDownloadZipClick = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3000/api/downloadFolderAsZip/${encodeURIComponent(
+        `${process.env.NEXT_PUBLIC_DOWNLOAD_FOLDER_AS_ZIP}${encodeURIComponent(
           file.path || file.name
         )}`,
         {

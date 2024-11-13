@@ -40,7 +40,7 @@ export default function Layout({ children }: LayoutProps) {
     { label: "Files", href: "/files" },
     {
       label: "Logout",
-      onClick: () => (window.location.href = "http://localhost:3000/api/logout/google"),
+      onClick: () => (window.location.href = `${process.env.NEXT_PUBLIC_LOGOUT_URL}`),
     },
   ];
 

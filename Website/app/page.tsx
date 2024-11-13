@@ -17,7 +17,7 @@ export default function HomePage() {
   }, [user, router]);
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:3000/api/auth/google';
+    window.location.href = process.env.NEXT_PUBLIC_AUTH_URL;
   };
 
   return (
