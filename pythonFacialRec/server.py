@@ -6,9 +6,13 @@ from aiohttp import web, ClientSession
 from PIL import Image
 import io
 import json
+import os
 from datetime import datetime
 import aiohttp_cors
 from cryptoFunctions import UserEncryption
+
+cookieInfoApi = os.getenv("COOKIE_INFO")
+
 
 
 async def hello(request):
@@ -59,7 +63,7 @@ async def cookieInfo(cookie):
 
         try:
             # Make the request to the backend with only the Cookie header
-            async with session.get("https://facialrec.org/api/userCookieInfo", headers=headers) as response:
+            async with session.get(f"{cookieInfoApi}", headers=headers) as response:
                 response.raise_for_status()
                 data = await response.json()
                 return data
